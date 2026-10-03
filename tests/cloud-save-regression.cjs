@@ -22,7 +22,7 @@ async function harness({ user = null, cloud = [], cache = [], configured = true,
     const intervals = [];
     const windowEvents = new Map();
     let state = city(0), authCallback, currentSession = user ? session(user) : null;
-    const controls = { offline: false, uploads: 0, afterUpload: null, reads: 0, requests: [], authRequests: [], signupError: null, signupWait: null, googleEnabled: true, oauthError: null, oauthWait: null, settingsRequests: 0 };
+    const controls = { offline: false, uploads: 0, afterUpload: null, reads: 0, requests: [], authRequests: [], signupError: null, signupWait: null, loginError: null, googleEnabled: true, oauthError: null, oauthWait: null, settingsRequests: 0, settingsStatus: 200 };
     function node(id) {
         if (!nodes.has(id)) nodes.set(id, {
             hidden: false, open: false, value: "", disabled: false, dataset: {}, textContent: "",
@@ -54,7 +54,7 @@ async function harness({ user = null, cloud = [], cache = [], configured = true,
                 if (controls.signupWait) await controls.signupWait;
                 return { data: { session: null }, error: controls.signupError };
             },
-            async signInWithPassword(args) { controls.authRequests.push({ action: "login", ...args }); return { data: {}, error: { message: "Invalid login credentials" } }; }
+            async signInWithPassword(args) { controls.authRequests.push({ action: "login", ...args }); return { data: {}, error: controls.loginError || { message: "Invalid login credentials" } }; }
         },
         from(table) {
             assert.equal(table, "city_saves");
@@ -109,7 +109,7 @@ async function harness({ user = null, cloud = [], cache = [], configured = true,
             assert.equal(options.headers.apikey, "sb_publishable_test");
             controls.settingsRequests++;
             if (controls.offline) throw new Error("Network offline");
-            return { ok: true, async json() { return { external: { google: controls.googleEnabled } }; } };
+            return { ok: controls.settingsStatus === 200, status: controls.settingsStatus, async json() { return { external: { google: controls.googleEnabled } }; } };
         },
         setTimeout(fn, delay) { if (delay === 0) timers.push(fn); },
         setInterval(fn) { intervals.push(fn); },
@@ -184,9 +184,21 @@ async function harness({ user = null, cloud = [], cache = [], configured = true,
     await h.submit("accountForm");
     assert.equal(h.controls.authRequests.at(-1).action, "login", "Existing passwords must not be blocked by the signup length rule");
     assert.equal(h.nodes.get("accountMessage").textContent, "Invalid login credentials");
+    h.controls.loginError = { name: "AuthRetryableFetchError", message: "Failed to fetch" };
+    await h.submit("accountForm");
+    assert.match(h.nodes.get("accountMessage").textContent, /Cannot reach the account service/);
+    assert.equal(h.nodes.get("loginButton").disabled, false, "An unavailable login service must leave the form usable");
     console.log("Passed: inline signup validation, whitespace trimming, visible pending state, duplicate-submit prevention, confirmation instructions, SMTP errors and login submission.");
 
     h = await harness({ cache: [[GUEST, JSON.stringify(city(123))]] });
+    h.controls.settingsStatus = 521;
+    await h.click("googleLoginButton");
+    assert.match(h.nodes.get("accountMessage").textContent, /account service is unavailable/);
+    assert.equal(h.controls.authRequests.length, 0, "An unavailable Auth service must not start a failed redirect");
+    assert.equal(h.controls.redirect, undefined);
+    assert.equal(h.nodes.get("googleLoginButton").disabled, false);
+    assert.equal(JSON.parse(h.storage.get(GUEST)).salvage, 123, "Connection failures preserve the guest city");
+    h.controls.settingsStatus = 200;
     h.controls.googleEnabled = false;
     await h.click("googleLoginButton");
     assert.match(h.nodes.get("accountMessage").textContent, /not enabled yet/);
