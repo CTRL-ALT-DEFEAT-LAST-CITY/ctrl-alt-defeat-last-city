@@ -57,6 +57,7 @@ const context = vm.createContext({
 vm.runInContext(fs.readFileSync(path.join(root, "progression.js"), "utf8"), context);
 vm.runInContext(fs.readFileSync(path.join(root, "adventure.js"), "utf8"), context);
 vm.runInContext(fs.readFileSync(path.join(root, "pets.js"), "utf8"), context);
+vm.runInContext(fs.readFileSync(path.join(root, "effects.js"), "utf8"), context);
 vm.runInContext(fs.readFileSync(path.join(root, "game.js"), "utf8"), context);
 const run = code => vm.runInContext(code, context);
 // Existing economy tests complete the cosmetic reveal before buying another egg.
@@ -497,3 +498,25 @@ assert.equal(run("activeHatch.phase"), "rolling");
 assert.equal(run("autoHatchSession.timer"), null, "A second egg waits until the reel reveals");
 run("revealHatch(); stopAutoHatch(); closeHatchReveal()");
 console.log("Passed: copy-by-copy equipment, owned-copy bounds, merge slot cleanup, Equip Best, saved auto-equip, serial auto-hatch, spending limits and stop/pause safety.");
+
+// Effects preferences persist and never change the already-paid hatch reward.
+run("game.effectsEnabled = false; saveGame(false); game.effectsEnabled = true; loadGame()");
+assert.equal(run("game.effectsEnabled"), false);
+run("game.salvage = 1000; game.skipHatchAnimations = false; currentStageView = 1");
+const effectsHatches = run("game.adventure.eggsHatched");
+run("hatchEgg(1)");
+assert.equal(run("activeHatch.phase"), "revealed", "Effects off skips only the visual hatch");
+assert.equal(run("game.salvage"), 850);
+assert.equal(run("game.adventure.eggsHatched"), effectsHatches + 1);
+run("closeHatchReveal(); game.effectsEnabled = true; syncVfxPreference(); hatchEgg(1)");
+assert.equal(run("activeHatch.phase"), "rolling");
+run("game.effectsEnabled = false; syncVfxPreference()");
+assert.equal(run("activeHatch.phase"), "revealed");
+assert.equal(run("activeHatch.timers").every(timer => !pendingTimers.has(timer)), true);
+assert.equal(run("game.salvage"), 700);
+assert.equal(run("game.adventure.eggsHatched"), effectsHatches + 2);
+run("closeHatchReveal(); const legacyEffectsSave = JSON.parse(JSON.stringify(game)); delete legacyEffectsSave.effectsEnabled; loadGame(JSON.stringify(legacyEffectsSave))");
+assert.equal(run("game.effectsEnabled"), true, "Older saves receive the new default");
+run("clearVfx(); updateGame(); updateGame()");
+assert.equal(run("liveVfx.size + vfxAnimations.size"), 0, "Routine UI updates must not replay navigation or particles");
+console.log("Passed: saved effects toggle, legacy-save default, instant hatch with effects off, mid-roll cleanup, exactly-once reward and no passive render effects.");

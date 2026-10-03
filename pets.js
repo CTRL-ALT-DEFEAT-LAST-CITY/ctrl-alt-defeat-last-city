@@ -58,6 +58,7 @@ function equipBestPets(stage) {
     if (!isZoneUnlocked(stage)) return;
     applyBestPets(stage);
     updateGame();
+    pulseVfx(el("companionPanel")?.querySelector(".pet-slots"));
     saveGame(false);
 }
 function toggleAutoEquipBest(stage) {
@@ -73,6 +74,7 @@ function unequipPet(stage, id) {
     if (index < 0) return;
     slots.splice(index, 1);
     updateGame();
+    pulseVfx(el("companionPanel")?.querySelector(".pet-slots"));
     saveGame(false);
 }
 function petArtMarkup(id) {
@@ -210,6 +212,7 @@ function openPetMerge(id) {
     document.body.classList.add("pet-merge-open");
     renderPetMerge();
     el("petMergeModal").showModal();
+    animateVfx(el("petMergeModal"), [{ opacity: .5, transform: "scale(.97)" }, { opacity: 1, transform: "scale(1)" }]);
 }
 function renderPetMerge() {
     if (!mergeSelection) return;
@@ -231,6 +234,7 @@ function confirmPetMerge() {
     if (!result) return;
     mergeSelection.result = result;
     renderPetMerge();
+    pulseVfx(el("mergePreview"), result.success ? "rgba(255,194,71,.7)" : "rgba(255,160,130,.5)");
     playSfx(result.success ? "upgrade" : "build");
 }
 function closePetMerge() {

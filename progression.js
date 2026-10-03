@@ -143,7 +143,7 @@ function collectFieldNode(id, auto = false) {
     const [pickup] = p.fieldNodes.splice(index, 1);
     const reward = (pickup.charged ? 15 : 5) * (1 + infrastructureLevel("fieldCollector") * .25) * getCompanionMultiplier(4);
     p.fieldCollected++;
-    grantZoneResource(4, reward);
+    grantZoneResource(4, reward, !auto);
     const anchor = el("energy-" + id);
     if (!auto && anchor) { showFloatingGain(anchor, "+" + formatNumber(reward) + " Circuits"); spawnBurst(anchor, "#65baff", 6); playSfx("click"); }
     updateGame();

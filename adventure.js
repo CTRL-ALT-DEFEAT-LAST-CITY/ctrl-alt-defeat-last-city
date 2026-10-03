@@ -64,6 +64,7 @@ function equipPet(stage, id) {
     if (equipped.length >= 3) return showNotification("Three companions equipped. Unequip one first.");
     equipped.push(id);
     updateGame();
+    pulseVfx(el("companionPanel")?.querySelector(".pet-slots"));
     saveGame(false);
 }
 function hatchEgg(stage, { automatic = false } = {}) {
@@ -124,9 +125,10 @@ function startHatchReveal(stage, rarity, id) {
     el("skipHatchAnimations").checked = !!game.skipHatchAnimations;
     document.body.classList.add("hatch-open");
     modal.showModal();
+    animateVfx(modal, [{ opacity: .5, transform: "scale(.97)" }, { opacity: 1, transform: "scale(1)" }]);
     syncAutoHatchControls();
     const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (game.skipHatchAnimations || reducedMotion) { revealHatch(); return; }
+    if (game.skipHatchAnimations || reducedMotion || !canPlayVfx()) { revealHatch(); return; }
     // Let the initial position paint before transitioning toward the winning tile.
     hatch.timers.push(setTimeout(() => {
         if (activeHatch === hatch && hatch.phase === "rolling") strip.classList.add("rolling");
@@ -163,6 +165,7 @@ function revealHatch() {
         : "New companion added to your collection!";
     el("hatchStatus").textContent = "You hatched " + hatch.name + "!";
     el("hatchResult").hidden = false;
+    pulseVfx(el("hatchResult"), rarity.color);
     el("hatchSkipButton").textContent = "Continue";
     playSfx("upgrade");
     scheduleAutoHatchReveal();
@@ -205,9 +208,10 @@ function unlockNextZone(stage) {
     celebrateEvent("zone", ZONES[stage + 1].name, "Quest complete! " + ZONES[stage + 1].label + " production is now online.", ZONES[stage + 1].icon);
     return true;
 }
-function grantZoneResource(stage, amount) {
+function grantZoneResource(stage, amount, feedback = true) {
     const currency = ZONES[stage].currency;
     game[currency] += amount;
+    if (feedback) pulseResource(stage);
     if (stage === 1) { game.totalSalvage += amount; game.lifetimeSalvage += amount; }
 }
 function zoneRate(stage) {
@@ -318,11 +322,20 @@ function initAdventureUI() {
             if (autoHatchSession) stopAutoHatch();
             else startAutoHatch(currentStageView);
         }
-        if (button.dataset.petAction === "view") { companionView = button.dataset.view === "inventory" ? "inventory" : "eggs"; checkAutoHatchContext(); renderCompanions(); }
+        if (button.dataset.petAction === "view") {
+            const nextView = button.dataset.view === "inventory" ? "inventory" : "eggs";
+            if (nextView !== companionView) {
+                companionView = nextView;
+                checkAutoHatchContext();
+                renderCompanions();
+                animateViewEntry(el("companionPanel"));
+            }
+        }
         if (button.dataset.petAction === "filter") {
             if (button.dataset.filter === "scope") inventoryScope = button.dataset.value === "all" ? "all" : "zone";
             if (button.dataset.filter === "kind") inventoryKind = ["normal", "gold"].includes(button.dataset.value) ? button.dataset.value : "all";
             renderCompanions();
+            animateViewEntry(el("companionPanel"));
         }
         if (button.dataset.petAction === "merge") openPetMerge(button.dataset.id);
     });

@@ -32,6 +32,7 @@ const defaultGame = {
     highestSalvageRate: 0,
     introSeen: false,
     soundEnabled: true,
+    effectsEnabled: true,
     skipHatchAnimations: false,
     buildings: {
         scavenger: 0,
@@ -565,6 +566,7 @@ function buyBuilding(type) {
     playSfx("build");
     spawnBurst(el("buy" + type.charAt(0).toUpperCase() + type.slice(1)), "#65baff", 12);
     updateGame();
+    pulseVfx(el("buy" + type.charAt(0).toUpperCase() + type.slice(1))?.closest?.(".building-card"));
     saveGame(false);
 }
 
@@ -839,8 +841,8 @@ energyButton.addEventListener("click", function () {
     showFloatingGain(energyButton, `${isCritical ? "CRITICAL! " : ""}+${formatNumber(click)} ⚙️`);
     spawnBurst(energyButton, isCritical ? "#aa8cff" : "#ffc247", isCritical ? 20 : 10);
     playSfx(isCritical ? "critical" : "click");
-    energyButton.style.transform = "scale(0.95)";
-    setTimeout(() => energyButton.style.transform = "", 80);
+    pulseResource(1, isCritical);
+    animateVfx(energyButton, [{ transform: "scale(.97)" }, { transform: "scale(1)" }], { duration: 140 });
     updateGame();
 });
 
@@ -855,6 +857,7 @@ dispatchButton.addEventListener("click", () => {
     game.dispatchReadyAt = now + 60000;
     showFloatingGain(dispatchButton, `+${formatNumber(reward)} ⚙️`);
     spawnBurst(dispatchButton, "#65baff", 18);
+    pulseResource(1, true);
     playSfx("dispatch");
     showNotification("Supply drop secured!");
     updateGame();
@@ -889,7 +892,11 @@ stageResetButton.addEventListener("click", function () {
 stageTabs.forEach(tab => {
     tab.addEventListener("click", function () {
         const stage = parseInt(tab.dataset.stage);
-        if (!isZoneUnlocked(stage)) return showNotification(ZONES[stage - 1].quest);
+        if (!isZoneUnlocked(stage)) {
+            pulseVfx(tab, "rgba(255,160,130,.55)");
+            return showNotification(ZONES[stage - 1].quest);
+        }
+        if (stage === currentStageView) return;
 
         currentStageView = stage;
         stageTabs.forEach(t => t.classList.remove("active"));
@@ -897,17 +904,20 @@ stageTabs.forEach(tab => {
         tab.classList.add("active");
         el(`stage${stage}Panel`).classList.add("active");
         updateGame();
+        animateNavigation(tab);
     });
 });
 
 gameModeTabs.forEach(tab => {
     tab.addEventListener("click", () => {
+        if (currentGameMode === tab.dataset.mode) return;
         currentGameMode = tab.dataset.mode;
         document.body.classList.toggle("upgrades-open", currentGameMode === "upgrades");
         document.body.classList.toggle("stats-open", currentGameMode === "stats");
         document.body.classList.toggle("companions-open", currentGameMode === "companions");
         gameModeTabs.forEach(t => t.classList.toggle("active", t === tab));
         updateGame();
+        animateNavigation(tab);
     });
 });
 
@@ -1035,6 +1045,7 @@ setInterval(() => saveGame(false), 5000);
 // =============================================
 
 function updateGame() {
+    syncVfxPreference();
     checkAutoHatchContext();
     checkAchievements();
     if (soundButton) {
@@ -1542,20 +1553,19 @@ function formatNumber(value) {
 
 function showFloatingGain(anchor, text) {
     const layer = el("fxLayer");
-    if (!layer || !anchor) return;
+    if (!layer || !anchor || !canPlayVfx()) return;
     const rect = anchor.getBoundingClientRect();
     const gain = document.createElement("span");
     gain.className = "floating-gain";
     gain.textContent = text;
     gain.style.left = `${rect.left + rect.width / 2 + (Math.random() - 0.5) * 36}px`;
     gain.style.top = `${rect.top + 12}px`;
-    layer.appendChild(gain);
-    gain.addEventListener("animationend", () => gain.remove());
+    mountVfx(gain);
 }
 
 function spawnBurst(anchor, color, amount = 8) {
     const layer = el("fxLayer");
-    if (!layer || !anchor) return;
+    if (!layer || !anchor || !canPlayVfx()) return;
     const rect = anchor.getBoundingClientRect();
     for (let i = 0; i < amount; i++) {
         const particle = document.createElement("i");
@@ -1566,25 +1576,25 @@ function spawnBurst(anchor, color, amount = 8) {
         particle.style.setProperty("--x", `${(Math.random() - 0.5) * 150}px`);
         particle.style.setProperty("--y", `${-20 - Math.random() * 110}px`);
         particle.style.animationDelay = `${Math.random() * 80}ms`;
-        layer.appendChild(particle);
-        particle.addEventListener("animationend", () => particle.remove());
+        if (!mountVfx(particle)) break;
     }
 }
 
 function celebrateUpgrade() {
+    playSfx("upgrade");
+    if (!canPlayVfx()) return;
     const anchor = document.activeElement?.classList.contains("upgrade-card")
         ? document.activeElement : document.querySelector(".game-mode-tabs");
     spawnBurst(anchor, "#aa8cff", 14);
+    if (!anchor) return;
     const rect = anchor.getBoundingClientRect();
     const flash = document.createElement("div");
     flash.className = "purchase-flash";
     Object.assign(flash.style, { left: rect.left + "px", top: rect.top + "px", width: rect.width + "px", height: rect.height + "px" });
-    el("fxLayer").appendChild(flash);
-    flash.addEventListener("animationend", () => flash.remove(), { once: true });
+    mountVfx(flash);
     document.body.classList.remove("upgrade-celebration");
     void document.body.offsetWidth;
     document.body.classList.add("upgrade-celebration");
-    playSfx("upgrade");
 }
 
 // Queue milestone celebrations so simultaneous badges do not overwrite each other.
@@ -1625,11 +1635,10 @@ function showNextCelebration() {
     document.body.appendChild(card);
     spawnBurst(card, kind === "rebirth" ? "#aa8cff" : "#ffc247", kind === "rebirth" ? 32 : 18);
     playSfx("upgrade");
-    if (kind === "rebirth") {
+    if (kind === "rebirth" && canPlayVfx()) {
         const wave = document.createElement("div");
         wave.className = "rebirth-wave";
-        el("fxLayer").appendChild(wave);
-        wave.addEventListener("animationend", () => wave.remove(), { once: true });
+        mountVfx(wave, 1300);
     }
     setTimeout(() => {
         card.remove();
@@ -1665,7 +1674,13 @@ function playSfx(type = "click") {
     } catch (_) { }
 }
 
-function showIntroModal() { if (!game.introSeen && introModal) introModal.hidden = false; }
+function showIntroModal() {
+    if (!game.introSeen && introModal) {
+        introModal.hidden = false;
+        animateVfx(introModal.querySelector(".intro-card"),
+            [{ opacity: .4, transform: "translateY(12px) scale(.98)" }, { opacity: 1, transform: "translateY(0) scale(1)" }]);
+    }
+}
 function closeIntroModal() {
     if (!introModal) return;
     game.introSeen = true;
@@ -1690,6 +1705,7 @@ introStartButton.addEventListener("click", closeIntroModal);
 setupBuildingButtons();
 loadGame();
 initAdventureUI();
+initVfx();
 setTimeout(showIntroModal, 600);
 
 // Small bridge used by the account module; saves still use the existing game loader.

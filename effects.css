@@ -1,0 +1,50 @@
+/* Lightweight cyberpunk feedback. All layers remain transparent to input. */
+body { --feedback-color: #5eeaff; }
+body[data-zone="2"] { --feedback-color: #5bd69b; }
+body[data-zone="3"] { --feedback-color: #ffbd72; }
+body[data-zone="4"] { --feedback-color: #da85ff; }
+body[data-zone="5"] { --feedback-color: #b9a0ff; }
+.stage-tab, .game-mode-tab { position: relative; }
+.stage-tab::after, .game-mode-tab::after {
+    content: ""; position: absolute; bottom: 0; left: 20%; right: 20%; height: 2px;
+    background: var(--feedback-color); border-radius: 2px;
+    transform: scaleX(0); opacity: 0;
+    transition: transform .25s ease, opacity .25s ease;
+    pointer-events: none;
+}
+.stage-tab.active::after, .game-mode-tab.active::after {
+    transform: scaleX(1); opacity: 1;
+    box-shadow: 0 0 9px var(--feedback-color);
+}
+.interaction-ripple {
+    position: absolute; width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid var(--feedback-color); background: transparent;
+    pointer-events: none; animation: interactionRipple .55s ease-out both;
+}
+@keyframes interactionRipple {
+    from { opacity: .7; transform: translate(-50%, -50%) scale(.25); }
+    to { opacity: 0; transform: translate(-50%, -50%) scale(2.1); }
+}
+.resource-card { transition: border-color .25s ease, box-shadow .25s ease; }
+.purchase-track > span, .progress-bar-fill { transition: width .35s ease; }
+button:focus-visible { outline: 2px solid var(--feedback-color); outline-offset: 3px; }
+@media (hover: hover) and (pointer: fine) {
+    .building-card:hover, .pet-card:hover { border-color: var(--feedback-color); }
+    .stage-tab:not(:disabled):hover, .game-mode-tab:hover { box-shadow: 0 0 18px #5eeaff14; }
+}
+/* Saved preference also disables older effects, without removing status messages. */
+body.vfx-disabled *, body.vfx-disabled *::before, body.vfx-disabled *::after {
+    animation: none !important; transition: none !important;
+}
+body.vfx-disabled .milestone-celebration { transform: translateX(-50%); }
+body.vfx-disabled .floating-gain, body.vfx-disabled .spark,
+body.vfx-disabled .purchase-flash, body.vfx-disabled .rebirth-wave { display: none; }
+body.vfx-disabled button:active:not(:disabled) { transform: none; }
+body.vfx-disabled button.energy-pickup:active:not(:disabled) { transform: translate(-50%, -50%); }
+@media (max-width: 520px) {
+    .header-buttons button { flex: 1 1 calc(33.333% - 6px); min-width: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .milestone-celebration { transform: translateX(-50%); }
+}
