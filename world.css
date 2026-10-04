@@ -1,0 +1,132 @@
+/* Shared layout with an earned, distinct identity for each zone. */
+body { --world-color: #f4bf76; --world-glow: #f4bf7619; --world-art: url('assets/zones/ashfall.png'); }
+body[data-zone="1"] { --world-color: #f4bf76; --world-glow: #f4bf7619; }
+body[data-zone="2"] { --world-color: #92e2b1; --world-glow: #92e2b119; }
+body[data-zone="3"] { --world-color: #ffab7d; --world-glow: #ffab7d19; }
+body[data-zone="4"] { --world-color: #c4a5ff; --world-glow: #c4a5ff19; }
+body[data-zone="5"] { --world-color: #a8dfff; --world-glow: #a8dfff19; }
+body, body[data-zone] {
+    --blue: var(--world-color); --yellow: var(--world-color); --feedback-color: var(--world-color);
+    background: radial-gradient(ellipse at 85% 0%, var(--world-glow), transparent 50%), #080b13;
+}
+.game-container { row-gap: 14px; }
+.game-container > .game-mode-tabs { grid-row: 1 / span 16; }
+.game-mode-tabs::before { content: "YOUR CITY"; }
+.game-mode-tab { line-height: 1.4; }
+.game-mode-tab.active { background: var(--world-glow); }
+.stage-tabs { margin: 0; }
+.stage-tab { flex: 1 1 120px; }
+.stage-tab.active { border-color: var(--world-color); background: var(--world-glow); }
+.stage-tab.locked { opacity: .65; }
+.stage-tab.locked::before { content: "🔒 "; font-size: 9px; }
+.world-banner {
+    position: relative; isolation: isolate; overflow: hidden;
+    display: grid; grid-template-columns: minmax(0, 1fr) 100px; gap: 20px;
+    padding: 28px; min-height: 290px; border: 1px solid #566176;
+    border-radius: 18px;
+    background: linear-gradient(90deg, #080e18ee 0%, #080e18b8 42%, #080e1820 100%), var(--world-art) center 42% / cover;
+    box-shadow: 0 12px 36px #0003;
+}
+.world-banner::after {
+    content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background: linear-gradient(0deg, #080e18c9, transparent 70%);
+}
+.world-banner-copy { max-width: 570px; }
+.world-banner .eyebrow { color: var(--world-color); }
+.world-mood { color: #d3ddec; font-size: 11px; margin: 8px 0; letter-spacing: 1px; }
+.world-banner h2 { color: #fff; font-size: clamp(25px, 3.8vw, 42px); line-height: 1.1; letter-spacing: -1px; margin: 4px 0 14px; }
+.world-banner-copy > p:last-of-type { color: #d9e2ed; font-size: 13px; line-height: 1.7; max-width: 48ch; }
+.world-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.world-actions button { min-height: 44px; padding: 10px 16px; border: 1px solid var(--world-color); border-radius: 9px; cursor: pointer; background: var(--world-color); color: #101621; font-size: 12px; font-weight: 600; }
+.world-actions .secondary-button { background: #101827d9; color: #eef4ff; border-color: #8190a088; }
+.world-zone-marker { align-self: start; justify-self: end; padding: 10px; border: 1px solid #ffffff33; border-radius: 8px; text-align: center; background: #080e1880; color: #ffffffb0; }
+.world-zone-marker span { display: block; font-size: 8px; letter-spacing: 3px; }
+.world-zone-marker strong { display: block; font-size: 26px; line-height: 1.4; }
+.world-objective { grid-column: 1 / -1; display: flex; gap: 12px; align-items: baseline; padding-top: 15px; border-top: 1px solid #ffffff20; }
+.world-objective > span { flex-shrink: 0; color: var(--world-color); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+.world-objective p { color: #dde7f4; font-size: 12px; line-height: 1.5; margin: 0; }
+.milestone-panel, .tutorial-hint { margin: 0; }
+.save-status-row { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; color: var(--muted); }
+.save-status-row .auto-save-indicator, .save-status-row .cloud-save-status { margin: 0; font-size: 10px; }
+body.stats-open .save-status-row .auto-save-indicator { display: block !important; }
+.story-notice { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 14px 18px; border: 1px solid var(--world-color); border-radius: 12px; background: var(--world-glow); }
+.story-notice[hidden] { display: none; }
+.story-notice strong { font-size: 13px; color: var(--text); }
+.story-notice button { padding: 10px 14px; min-height: 44px; flex-shrink: 0; }
+.stage-panel .zone-scene { background: linear-gradient(90deg, #0a1019f5, #0a1019d6 55%, #0a1019a1), var(--world-art) center / cover; border-color: #526174; }
+.stage-panel .zone-scenery { display: none; }
+.zone-content, .collection-header { max-width: none; }
+.zone-lore { color: #d0dce7; }
+.zone-workshop, .resource-card:first-child { border-top-color: var(--world-color); }
+.energy-button { background: linear-gradient(110deg, var(--world-color), #e4e9f6); border-color: var(--world-color); }
+.purchase-track > span { background: linear-gradient(90deg, var(--world-color), #ab94ff); }
+.collection-field { background: linear-gradient(#10182acc, #10182ae6), var(--world-art) center / cover; }
+.player-settings { position: relative; }
+.player-settings > summary { list-style: none; cursor: pointer; min-height: 42px; display: flex; align-items: center; padding: 10px 15px; border: 1px solid var(--border); border-radius: 9px; background: #111522; color: #cbd6ea; font-size: 11px; }
+.player-settings > summary::-webkit-details-marker { display: none; }
+.player-settings > summary:focus-visible { outline: 2px solid var(--world-color); outline-offset: 3px; }
+.settings-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 220; display: grid; gap: 10px; width: min(290px, calc(100vw - 28px)); padding: 18px; background: #111827; border: 1px solid #506177; border-radius: 12px; box-shadow: 0 15px 45px #0009; }
+.settings-menu button { width: 100%; }
+.settings-menu > p:not(.eyebrow) { font-size: 11px; color: #b2c1d7; line-height: 1.6; }
+.settings-menu .danger-button { margin-top: 5px; border-top-color: #9b5360; }
+.story-panel { display: none; min-width: 0; }
+body.stories-open .story-panel { display: block; }
+body.stories-open .stage-panel, body.stories-open .stage-reset-dock,
+body.stories-open .milestone-panel, body.stories-open .tutorial-hint,
+body.companions-open .milestone-panel, body.companions-open .tutorial-hint { display: none !important; }
+.archive-heading { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.archive-heading h2 { font-size: 24px; margin: 5px 0; }
+.archive-heading p:not(.eyebrow) { color: var(--muted); font-size: 12px; line-height: 1.6; }
+.archive-heading > strong { flex-shrink: 0; font-size: 12px; color: var(--world-color); }
+.story-filters { display: flex; flex-wrap: wrap; gap: 7px; padding: 16px 0; }
+.story-filters button { min-height: 44px; border: 1px solid var(--border); background: #111b2b; color: #cbd8eb; padding: 9px 13px; border-radius: 8px; font-size: 11px; cursor: pointer; }
+.story-filters button[aria-pressed="true"] { border-color: var(--world-color); color: var(--world-color); background: var(--world-glow); }
+.archive-layout { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.story-index { display: grid; gap: 8px; max-height: 680px; max-height: min(680px, 80dvh); overflow-y: auto; padding-right: 5px; scrollbar-width: thin; }
+.story-index button { display: grid; gap: 6px; width: 100%; padding: 15px; min-height: 95px; border: 1px solid var(--border); border-radius: 10px; background: #131c2b; color: var(--text); text-align: left; cursor: pointer; }
+.story-index button[aria-pressed="true"] { border-color: var(--world-color); background: var(--world-glow); }
+.story-index small { color: var(--world-color); font-size: 9px; letter-spacing: 1px; }
+.story-index strong { font-size: 13px; }
+.story-index span { color: #b6c4d8; font-size: 11px; line-height: 1.5; }
+.story-index button:disabled { cursor: default; background: #0e1521; color: #8999b0; }
+.story-index button:disabled small { color: #8999b0; }
+.story-reader { background: #111a28; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; min-width: 0; }
+.story-art { height: clamp(170px, 22vw, 260px); background-position: center; background-size: cover; border-bottom: 1px solid var(--border); }
+.story-art-1 { background-image: url('assets/zones/ashfall.png'); }
+.story-art-2 { background-image: url('assets/zones/depot.png'); }
+.story-art-3 { background-image: url('assets/zones/foundry.png'); }
+.story-art-4 { background-image: url('assets/zones/relay.png'); }
+.story-art-5 { background-image: url('assets/zones/citadel.png'); }
+.story-page { padding: clamp(20px, 3vw, 36px); }
+.story-page h3 { font-size: clamp(24px, 3vw, 32px); line-height: 1.3; margin: 12px 0 24px; color: #fff; }
+.story-page > p:not(.eyebrow) { font-size: 15px; line-height: 1.85; color: #d2dfef; margin: 0 0 19px; max-width: 65ch; }
+.story-page button { padding: 10px 15px; }
+@media (max-width: 1180px) {
+    .game-container > .game-mode-tabs { grid-row: 1; }
+    .game-mode-tab { flex: 1 1 140px; }
+}
+@media (max-width: 760px) {
+    .archive-layout { grid-template-columns: 1fr; }
+    .story-index { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: 280px; padding: 0 4px 5px 0; }
+    .world-banner { padding: 22px; grid-template-columns: 1fr; min-height: 270px; }
+    .world-zone-marker { display: none; }
+    .world-objective { flex-direction: column; gap: 5px; }
+    .archive-heading { flex-wrap: wrap; }
+    .story-art { height: 190px; }
+}
+@media (max-width: 520px) {
+    .game-container { width: calc(100% - 24px); row-gap: 12px; }
+    .game-container > .game-mode-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+    .game-mode-tab { width: 100%; min-height: 50px; padding: 8px 5px; font-size: 10px; }
+    .stage-tab { flex: 1 1 calc(33.333% - 6px); min-width: 0; }
+    .world-banner { background-position: center, 60% center; padding: 20px 16px; }
+    .world-actions button { flex: 1 1 120px; }
+    .header-buttons { align-items: stretch; }
+    .header-buttons > button, .header-buttons > details { flex: 1 1 calc(33.333% - 6px); }
+    .player-settings > summary { height: 100%; justify-content: center; padding: 10px; }
+    .story-notice { align-items: stretch; flex-direction: column; }
+    .story-notice button { width: 100%; }
+    .story-index button { padding: 12px; }
+    .story-filters { gap: 6px; }
+    .story-filters button { flex: 1 1 45%; }
+}

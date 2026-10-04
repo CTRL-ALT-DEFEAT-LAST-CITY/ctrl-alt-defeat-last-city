@@ -7,6 +7,7 @@ const vm = require("node:vm");
 const root = path.join(__dirname, "..");
 const nodes = new Map();
 function node() {
+    const classes = new Set();
     return {
         textContent: "", _html: "", children: [], style: { setProperty() {} },
         get innerHTML() { return this._html; },
@@ -17,10 +18,17 @@ function node() {
                 if (!nodes.has(match[1])) { const entry = node(); entry.id = match[1]; nodes.set(match[1], entry); }
             }
         },
-        classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+        classList: {
+            add(...names) { names.forEach(name => classes.add(name)); },
+            remove(...names) { names.forEach(name => classes.delete(name)); },
+            toggle(name, force) { const enabled = force ?? !classes.has(name); if (enabled) classes.add(name); else classes.delete(name); return enabled; },
+            contains(name) { return classes.has(name); }
+        },
         dataset: {}, firstChild: { textContent: "" },
         parentElement: { style: {} },
-        addEventListener() {}, setAttribute() {}, append() {},
+        listeners: {}, attributes: {},
+        addEventListener(type, callback) { (this.listeners[type] ||= []).push(callback); },
+        setAttribute(name, value) { this.attributes[name] = value; }, append() {},
         showModal() { this.open = true; }, close() { this.open = false; }, focus() {},
         appendChild(child) { this.children.push(child); if (child.id) nodes.set(child.id, child); },
         remove() { if (this.id) nodes.delete(this.id); },
@@ -58,6 +66,7 @@ vm.runInContext(fs.readFileSync(path.join(root, "progression.js"), "utf8"), cont
 vm.runInContext(fs.readFileSync(path.join(root, "adventure.js"), "utf8"), context);
 vm.runInContext(fs.readFileSync(path.join(root, "pets.js"), "utf8"), context);
 vm.runInContext(fs.readFileSync(path.join(root, "effects.js"), "utf8"), context);
+vm.runInContext(fs.readFileSync(path.join(root, "world.js"), "utf8"), context);
 vm.runInContext(fs.readFileSync(path.join(root, "game.js"), "utf8"), context);
 const run = code => vm.runInContext(code, context);
 // Existing economy tests complete the cosmetic reveal before buying another egg.
@@ -520,3 +529,108 @@ assert.equal(run("game.effectsEnabled"), true, "Older saves receive the new defa
 run("clearVfx(); updateGame(); updateGame()");
 assert.equal(run("liveVfx.size + vfxAnimations.size"), 0, "Routine UI updates must not replay navigation or particles");
 console.log("Passed: saved effects toggle, legacy-save default, instant hatch with effects off, mid-roll cleanup, exactly-once reward and no passive render effects.");
+
+// Earned stories, replay, save migration and navigation never grant resources.
+run("closeHatchReveal(); game = JSON.parse(JSON.stringify(defaultGame)); currentStageView = 1; currentGameMode = 'city'; updateGame()");
+assert.equal(run("STORY_ENTRIES.length"), 17);
+assert.equal(run("unlockedStories().length"), 1);
+assert.equal(run("unreadStories().length"), 1);
+assert.equal(run("game.story.read.prologue"), undefined);
+const storyInitialStamp = run("game.story.unlocked.prologue");
+run("updateGame(); checkStoryUnlocks()");
+assert.equal(run("game.story.unlocked.prologue"), storyInitialStamp);
+assert.equal(run("openStory('guardian-fall')"), false);
+assert.equal(run("currentGameMode"), "city", "Locked stories cannot open");
+const storyCurrency = run("game.salvage");
+assert.equal(run("openStory('prologue')"), true);
+assert.equal(run("currentGameMode"), "stories");
+assert.equal(run("document.body.classList.contains('stories-open')"), true);
+assert.equal(run("document.body.classList.contains('companions-open')"), false);
+assert.equal(run("unreadStories().length"), 0);
+assert.equal(run("game.salvage"), storyCurrency);
+assert.ok(nodes.get("storyPanel").innerHTML.includes("The Last Light"));
+assert.ok(!nodes.get("storyPanel").innerHTML.includes("Permission to Begin"), "Locked story titles must not spoil the ending");
+run("openStory('prologue'); switchGameMode('city'); game.salvage = 100; buyBuilding('scavenger')");
+assert.equal(run("!!game.story.unlocked['first-camp']"), true);
+run("game.buildings.shelter = 1; updateGame()");
+assert.equal(run("!!game.story.unlocked.shelter"), true);
+run("game.adventure.progression.beaconModules = 3; game.buildings.citycenter = 4; updateGame()");
+assert.equal(run("!!game.story.unlocked.beacon"), true);
+const beforeStoryRebirth = run("JSON.stringify(game.story)");
+run("doRebirth()");
+assert.equal(run("JSON.stringify(game.story)"), beforeStoryRebirth, "Rebirth must retain unlocked and read stories");
+run("game.stage2Unlocked = true; game.adventure.keys = 3; updateGame()");
+assert.equal(run("!!game.story.unlocked['depot-arrival']"), true);
+assert.equal(run("!!game.story.unlocked['depot-keys']"), true);
+assert.equal(run("game.story.unlocked['foundry-arrival']"), undefined);
+run("game.stage3Unlocked = true; game.adventure.deliveries = 1; updateGame()");
+assert.equal(run("!!game.story.unlocked['first-engine']"), true);
+assert.equal(run("game.story.unlocked['foundry-orders']"), undefined);
+run("game.adventure.deliveries = 18; game.stage4Unlocked = true; currentStageView = 4; game.adventure.progression.fieldCollected = 20; updateGame()");
+assert.equal(run("!!game.story.unlocked['foundry-orders']"), true);
+assert.equal(run("!!game.story.unlocked['relay-energy']"), true);
+assert.equal(nodes.get("worldZoneName").textContent, "Neon Relay");
+assert.equal(run("game.story.unlocked['relay-towers']"), undefined);
+run("game.adventure.progression.relayTowers = 3; updateGame(); game.stage5Unlocked = true; currentStageView = 5; game.adventure.shields = [0,1,2]; updateGame()");
+assert.equal(run("!!game.story.unlocked['guardian-shields']"), true);
+run("game.adventure.shields = []; game.adventure.bossHealth = 75; updateGame()");
+assert.equal(run("!!game.story.unlocked['guardian-shields']"), true, "Transient shields must not relock their story");
+run("game.adventure.bossDefeated = true; updateGame()");
+assert.equal(run("!!game.story.unlocked['guardian-fall']"), true);
+assert.equal(run("game.story.unlocked.ending"), undefined, "Boss defeat alone must not unlock the final rebuilding story");
+run("game.gameCompleted = true; updateGame(); storyScope = '2'; openStory('ending')");
+assert.equal(run("storySelected"), "ending");
+assert.equal(run("storyScope"), "all", "Opening a transmission outside the current filter must show it");
+const archiveMarkup = nodes.get("storyPanel").innerHTML;
+run("updateGame()");
+assert.equal(nodes.get("storyPanel").innerHTML, archiveMarkup);
+assert.equal(run("unlockedStories().length"), 17);
+run("const allStoryState = JSON.stringify(game.story); game.stage2Upgrades.scrapRate = 3; doStage2Reset(); game.stage3Upgrades.partRate = 3; doStage3Reset(); game.stage4Upgrades.circuitRate = 3; doStage4Reset(); game.stage5Upgrades.coreRate = 3; doStage5Reset()");
+assert.equal(run("JSON.stringify(game.story)"), run("allStoryState"), "All stage resets retain the archive");
+run("saveGame(false); const storySaved = JSON.stringify(game.story); game.story = normalizeStory(); loadGame()");
+assert.equal(run("JSON.stringify(game.story)"), run("storySaved"));
+run("switchGameMode('companions'); companionView = 'eggs'; game.salvage = 1000; currentStageView = 1; startAutoHatch(1); switchGameMode('stories')");
+assert.equal(run("autoHatchSession"), null, "Opening the archive must stop automatic spending");
+run("closeHatchReveal(); window.LastCityCloud = { isSwitching: () => true }; switchGameMode('city')");
+assert.equal(run("currentGameMode"), "stories");
+assert.equal(run("openStory('prologue')"), false, "Account switching must not mutate story read state");
+run("delete window.LastCityCloud; storyScope = 'all'");
+nodes.get("storyPanel").listeners.click[0]({ target: { closest: () => ({ disabled: false, dataset: { storyFilter: "5" } }) } });
+assert.equal(run("storyScope"), "5");
+assert.ok(!nodes.get("storyPanel").innerHTML.includes("A Fire with a Name"));
+assert.deepEqual(JSON.parse(run("JSON.stringify(normalizeStory({ unlocked: { prologue: 123, bogus: 55, ending: 'bad' }, read: { prologue: true, ending: true, bogus: true } }))")), { unlocked: { prologue: 123 }, read: { prologue: true } });
+run("const preStory = JSON.parse(JSON.stringify(game)); delete preStory.story; loadGame(JSON.stringify(preStory))");
+assert.equal(run("!!game.story.unlocked['citadel-arrival']"), true, "Legacy saves recover eligible story milestones");
+assert.equal(run("game.story.read.ending"), undefined);
+context.confirm = () => true;
+run("currentStageView = 5; storyScope = '5'; el('resetButton').listeners.click[0]()");
+assert.equal(run("unlockedStories().length"), 1, "A fresh city starts with only the prologue");
+assert.equal(run("unreadStories().length"), 1);
+assert.equal(run("currentStageView"), 1);
+assert.equal(run("currentGameMode"), "city");
+assert.equal(run("storyScope"), "all");
+assert.equal(nodes.get("worldZoneName").textContent, "Ashfall Outpost");
+assert.equal(run("document.body.classList.contains('stories-open')"), false);
+
+const worldCss = fs.readFileSync(path.join(root, "world.css"), "utf8");
+assert.equal((worldCss.match(/\{/g) || []).length, (worldCss.match(/\}/g) || []).length);
+for (const art of ["ashfall", "depot", "foundry", "relay", "citadel"]) {
+    const bytes = fs.readFileSync(path.join(root, "assets", "zones", art + ".png"));
+    assert.equal(bytes.toString("hex", 0, 8), "89504e470d0a1a0a");
+    assert.equal(bytes.readUInt32BE(16), 1536);
+    assert.equal(bytes.readUInt32BE(20), 1024);
+    assert.ok(worldCss.includes("assets/zones/" + art + ".png"));
+}
+const worldHtml = fs.readFileSync(path.join(root, "index.html"), "utf8");
+assert.ok(worldHtml.indexOf('src="world.js"') < worldHtml.indexOf('src="game.js"'));
+assert.ok(worldHtml.includes('data-mode="stories"'));
+assert.ok(worldHtml.includes('<details id="playerSettings" class="player-settings">'));
+const htmlStack = [], htmlVoids = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"]);
+for (const match of worldHtml.replace(/<!--[\s\S]*?-->/g, "").matchAll(/<\/?([a-z][a-z0-9-]*)\b[^>]*>/gi)) {
+    const name = match[1].toLowerCase();
+    if (htmlVoids.has(name)) continue;
+    if (match[0].startsWith("</")) assert.equal(htmlStack.pop(), name, "HTML sections must close in the correct order");
+    else htmlStack.push(name);
+}
+assert.deepEqual(htmlStack, []);
+console.log("Passed: 17 earned story entries, locked spoilers, unread markers, replay, renewal persistence, save migration, archive filters, auto-hatch stop, account-switch protection, zone HUD and all five illustrated assets.");

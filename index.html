@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="cyberpunk.css">
     <link rel="stylesheet" href="effects.css">
+    <link rel="stylesheet" href="world.css">
     <link rel="stylesheet" href="cloud-save.css?v=google-1">
 </head>
 <body>
@@ -19,29 +20,45 @@
     </div>
     <div class="header-buttons">
         <button id="accountButton" class="secondary-button">☁ Account</button>
-        <button id="soundButton" class="secondary-button" aria-pressed="true">🔊 Sound</button>
-        <button id="effectsButton" class="secondary-button" aria-pressed="true">✦ Effects on</button>
         <button id="saveButton" class="secondary-button">💾 Save</button>
-        <button id="resetButton" class="danger-button">↻ Reset</button>
+        <details id="playerSettings" class="player-settings">
+            <summary>⚙ Settings</summary>
+            <div class="settings-menu"><p class="eyebrow">PLAYER PREFERENCES</p>
+                <button id="soundButton" class="secondary-button" aria-pressed="true">🔊 Sound</button>
+                <button id="effectsButton" class="secondary-button" aria-pressed="true">✦ Effects on</button>
+                <p>Preferences save with your city. Device reduced-motion settings take priority.</p>
+                <button id="resetButton" class="danger-button">↻ Reset all progress</button>
+            </div>
+        </details>
     </div>
 </header>
 
 <main class="game-container">
 
-    <nav class="stage-tabs">
-        <button class="stage-tab active" data-stage="1">1. The Ruins</button>
-        <button class="stage-tab locked" data-stage="2">2. The Settlement</button>
-        <button class="stage-tab locked" data-stage="3">3. The Industry</button>
-        <button class="stage-tab locked" data-stage="4">4. The Network</button>
-        <button class="stage-tab locked" data-stage="5">5. The Ascension</button>
+    <nav class="stage-tabs" aria-label="Travel between zones">
+        <button class="stage-tab active" data-stage="1" aria-pressed="true">01 · Ashfall</button>
+        <button class="stage-tab locked" data-stage="2" aria-pressed="false">02 · Depot</button>
+        <button class="stage-tab locked" data-stage="3" aria-pressed="false">03 · Foundry</button>
+        <button class="stage-tab locked" data-stage="4" aria-pressed="false">04 · Relay</button>
+        <button class="stage-tab locked" data-stage="5" aria-pressed="false">05 · Citadel</button>
     </nav>
 
     <nav class="game-mode-tabs" aria-label="Game sections">
-        <button class="game-mode-tab active" data-mode="city">⌂ Command Center</button>
+        <button class="game-mode-tab active" data-mode="city" aria-pressed="true">⌂ Play & Build</button>
         <button class="game-mode-tab" data-mode="upgrades">✦ Upgrades <span id="upgradeReadyCount" class="ready-badge" hidden>0</span></button>
         <button class="game-mode-tab" data-mode="stats">▦ Statistics</button>
         <button class="game-mode-tab" data-mode="companions">🥚 Companions</button>
+        <button class="game-mode-tab" data-mode="stories">▤ Story Archive <span id="storyUnreadCount" class="ready-badge" hidden>0</span></button>
     </nav>
+
+    <section class="world-banner" aria-labelledby="worldZoneName">
+        <div class="world-banner-copy"><p id="worldZoneNumber" class="eyebrow">ZONE 01 / 05</p>
+            <p id="worldZoneMood" class="world-mood">Embers in the ruins</p><h2 id="worldZoneName">Ashfall Outpost</h2>
+            <p id="worldZoneIntro">A single campfire. A broken beacon. A city worth bringing back.</p>
+            <div class="world-actions"><button id="worldExploreButton">Explore zone</button><button id="worldUpgradeButton" class="secondary-button">Browse upgrades</button></div>
+        </div><div class="world-zone-marker" aria-hidden="true"><span>SECTOR</span><strong>LC</strong></div>
+        <div class="world-objective"><span id="worldActivity">Build & restore</span><p id="worldObjective">Build 4 City Centers and restore the beacon.</p></div>
+    </section>
 
     <section class="milestone-panel" aria-live="polite">
         <div class="milestone-copy">
@@ -53,8 +70,10 @@
         <strong id="milestonePercent" class="milestone-percent">0%</strong>
     </section>
     <div id="tutorialHint" class="tutorial-hint">Tip: gather Salvage, then invest it in your first Camp.</div>
-    <div id="autoSaveIndicator" class="auto-save-indicator">● Auto-save ready</div>
-    <div id="cloudSaveStatus" class="cloud-save-status" role="status" aria-live="polite">Guest play · saved on this browser</div>
+    <div class="save-status-row"><div id="autoSaveIndicator" class="auto-save-indicator">● Auto-save ready</div>
+        <div id="cloudSaveStatus" class="cloud-save-status" role="status" aria-live="polite">Guest play · saved on this browser</div></div>
+    <aside id="storyNotice" class="story-notice" hidden><div><p class="eyebrow">CITY ARCHIVES</p><strong id="storyNoticeTitle" role="status" aria-live="polite">A new story awaits</strong></div><button id="readLatestStory" class="secondary-button">Read transmission</button></aside>
+    <section id="storyPanel" class="story-panel" aria-label="Unlocked city stories"></section>
     <section id="companionPanel" class="companion-panel" aria-label="Eggs and companions"></section>
 
     <!-- STAGE 1 -->
@@ -102,7 +121,7 @@
                 <div class="city-header">
                     <div>
                         <p class="eyebrow">STAGE 1</p>
-                        <h2>The Ruins</h2>
+                        <h2>Ashfall Outpost</h2>
                     </div>
                     <div class="city-level-group">
                         <div class="city-level">
@@ -551,6 +570,7 @@
 <script src="adventure.js"></script>
 <script src="pets.js"></script>
 <script src="effects.js"></script>
+<script src="world.js"></script>
 <script src="game.js"></script>
     <script src="cloud-save.js?v=account-recovery-1"></script>
 </body>

@@ -195,7 +195,7 @@ function renderCollectionZone() {
     if (!mount) return;
     // Create the field once. HUD updates must never destroy or reposition pickups.
     if (mount.dataset.fieldMounted !== "yes") {
-        mount.innerHTML = '<article class="zone-scene zone-4 collection-zone"><div class="collection-header"><div><p class="eyebrow">ZONE 4 · NEON ENERGY FIELD</p><h2>Harvest the signal.</h2><p class="zone-lore">Energy pulses gather between the relay towers. Tap or click them to collect Circuits.</p></div><div class="field-wallet"><span>CIRCUITS</span><strong id="fieldBalance">0</strong></div></div><div class="field-objective" id="fieldObjective"></div><div id="collectionField" class="collection-field" role="group" aria-label="Collect energy pickups"><div class="field-grid" aria-hidden="true"></div><span class="field-landmark landmark-one" aria-hidden="true">📡</span><span class="field-landmark landmark-two" aria-hidden="true">🏙️</span></div><div class="field-toolbar"><p>Blue energy: 5 Circuits · Gold energy: 15 · Your collectors and companions multiply rewards.</p><button id="towerButton" class="zone-unlock" data-action="tower"></button><button id="fieldUnlock" class="zone-unlock" data-action="unlock">Open The Ascension</button></div><div id="fieldWorkshop"></div></article>';
+        mount.innerHTML = '<article class="zone-scene zone-4 collection-zone"><div class="collection-header"><div><p class="eyebrow">ZONE 4 · NEON ENERGY FIELD</p><h2>Harvest the signal.</h2><p class="zone-lore">Energy pulses gather between the relay towers. Tap or click them to collect Circuits.</p></div><div class="field-wallet"><span>CIRCUITS</span><strong id="fieldBalance">0</strong></div></div><div class="field-objective" id="fieldObjective"></div><div id="collectionField" class="collection-field" role="group" aria-label="Collect energy pickups"><div class="field-grid" aria-hidden="true"></div><span class="field-landmark landmark-one" aria-hidden="true">📡</span><span class="field-landmark landmark-two" aria-hidden="true">🏙️</span></div><div class="field-toolbar"><p>Blue energy: 5 Circuits · Gold energy: 15 · Your collectors and companions multiply rewards.</p><button id="towerButton" class="zone-unlock" data-action="tower"></button><button id="fieldUnlock" class="zone-unlock" data-action="unlock">Open Celestial Citadel</button></div><div id="fieldWorkshop"></div></article>';
         mount.dataset.fieldMounted = "yes";
     }
     const p = game.adventure.progression;
@@ -207,7 +207,7 @@ function renderCollectionZone() {
         tower.textContent = p.relayTowers >= 3 ? "✓ All relay towers online" : "Build Tower " + (p.relayTowers + 1) + " · " + cost + " Circuits · " + count + " pickups";
         tower.disabled = p.relayTowers >= 3 || p.fieldCollected < count || game.circuits < cost;
     }
-    if (gate) { gate.disabled = !progressionObjective(4).ready || game.stage5Unlocked; gate.textContent = game.stage5Unlocked ? "✓ The Ascension unlocked" : "Open The Ascension"; }
+    if (gate) { gate.disabled = !progressionObjective(4).ready || game.stage5Unlocked; gate.textContent = game.stage5Unlocked ? "✓ Celestial Citadel unlocked" : "Open Celestial Citadel"; }
     if (workshop) { const markup = infrastructureMarkup(4); if (workshop.innerHTML !== markup) workshop.innerHTML = markup; }
     renderFieldNodes();
 }

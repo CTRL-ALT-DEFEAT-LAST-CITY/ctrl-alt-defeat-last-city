@@ -108,3 +108,37 @@ and boss locks. All accents, button press effects and meter visuals are CSS;
 JavaScript only supplies existing gameplay values. No new UI dependencies.
 
 Run gameplay regressions with `node tests/game-regression.cjs`.
+
+## Illustrated worlds and the story archive
+
+The October 4 update adds five illustrated zone backdrops in `assets/zones/`,
+with amber, green, copper, violet, and celestial-blue UI themes. The active zone
+banner explains the setting, activity, and objective and offers shortcuts to the
+zone activity and upgrade shop. Sound, effects, and full reset live in Settings;
+local and cloud save status share a compact row. Mobile navigation adapts to a
+three-column menu, and the archive becomes a single-column reader on small screens.
+
+The Story Archive contains 17 original entries, from the first campfire to the
+final rebuilding of the city. Stories unlock through construction, beacon
+restoration, depot keys, engine deliveries, energy collection, relay towers,
+Guardian shields, boss victory, and the final upgrade. The free prologue introduces
+the setting. Locked entries show their requirements without exposing their titles
+or narrative. Entries award no currency and do not change progression requirements.
+
+`game.story` stores discovery timestamps and read flags. Both survive rebirths
+and stage resets and are included in the existing local/cloud game snapshot.
+Older saves recover entries supported by their current milestones. A full reset
+starts a new archive with only the prologue. Unread badges and a non-blocking
+transmission notice direct players to new entries. Players can filter by zone,
+replay an unlocked entry, or explicitly mark a preview as read.
+
+Normal HUD updates do not replace an unchanged archive. Visiting the archive
+stops Auto Hatch through the existing menu-context checks. Story actions refuse
+to change state during account switching. The Stage 4 collection field keeps its
+persistent pickup elements and positions. The existing Effects toggle and device
+reduced-motion preferences also apply to archive transitions.
+
+Gameplay regressions now cover story conditions, spoiler protection, unread
+state, replay, persistence, legacy migration, filters, automatic-spending safety,
+theme HUD, and all five asset paths. Generated artwork was visually inspected;
+in-browser layout and actual mobile-device performance still need verification.

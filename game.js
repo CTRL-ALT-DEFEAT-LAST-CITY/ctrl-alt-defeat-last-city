@@ -33,6 +33,7 @@ const defaultGame = {
     introSeen: false,
     soundEnabled: true,
     effectsEnabled: true,
+    story: normalizeStory(),
     skipHatchAnimations: false,
     buildings: {
         scavenger: 0,
@@ -899,6 +900,7 @@ stageTabs.forEach(tab => {
         if (stage === currentStageView) return;
 
         currentStageView = stage;
+        stageTabs.forEach(t => t.setAttribute("aria-pressed", String(Number(t.dataset.stage) === stage)));
         stageTabs.forEach(t => t.classList.remove("active"));
         stagePanels.forEach(p => p.classList.remove("active"));
         tab.classList.add("active");
@@ -910,14 +912,7 @@ stageTabs.forEach(tab => {
 
 gameModeTabs.forEach(tab => {
     tab.addEventListener("click", () => {
-        if (currentGameMode === tab.dataset.mode) return;
-        currentGameMode = tab.dataset.mode;
-        document.body.classList.toggle("upgrades-open", currentGameMode === "upgrades");
-        document.body.classList.toggle("stats-open", currentGameMode === "stats");
-        document.body.classList.toggle("companions-open", currentGameMode === "companions");
-        gameModeTabs.forEach(t => t.classList.toggle("active", t === tab));
-        updateGame();
-        animateNavigation(tab);
+        switchGameMode(tab.dataset.mode);
     });
 });
 
@@ -1048,6 +1043,7 @@ function updateGame() {
     syncVfxPreference();
     checkAutoHatchContext();
     checkAchievements();
+    checkStoryUnlocks();
     if (soundButton) {
         soundButton.textContent = game.soundEnabled ? "🔊 Sound" : "🔇 Sound";
         soundButton.setAttribute("aria-pressed", String(game.soundEnabled));
@@ -1177,6 +1173,7 @@ function updateGame() {
     renderTutorialHint();
     renderCityVisual();
     renderAdventure();
+    renderWorldUI();
 
     // Tab locks
     stageTabs.forEach(tab => {
@@ -1198,6 +1195,7 @@ function renderTutorialHint() {
     const hint = el("tutorialHint");
     if (!hint) return;
     if (currentGameMode === "stats") hint.textContent = "Your lifetime record survives every Rebirth.";
+    else if (currentGameMode === "stories") hint.textContent = "Recover stories through zone milestones. Your archive survives city renewals.";
     else if (currentGameMode === "upgrades") hint.textContent = "Gold-edged cards are ready to buy. Field Tech resets on Rebirth; Shard upgrades do not.";
     else if (currentGameMode === "companions") hint.textContent = "Buy eggs with this zone's currency. Equip up to 3 companions; pets survive resets.";
     else if (game.totalClicks < 5) hint.textContent = "Tap Gather Salvage to begin rebuilding.";
@@ -1502,6 +1500,7 @@ function loadGame(snapshot) {
         game = {
             ...defaultGame,
             ...loaded,
+            story: normalizeStory(loaded.story),
             sessionStartedAt: Date.now(),
             buildings: { ...defaultGame.buildings, ...(loaded.buildings || {}) },
             cityTech: { ...defaultGame.cityTech, ...(loaded.cityTech || {}) },
@@ -1534,7 +1533,13 @@ resetButton.addEventListener("click", () => {
     localStorage.removeItem(getSaveKey());
     game = JSON.parse(JSON.stringify(defaultGame));
     game.lastSeen = Date.now();
-    updateGame();
+    currentStageView = 1;
+    storySelected = "prologue";
+    storyScope = "all";
+    stageTabs.forEach(tab => tab.classList.toggle("active", tab.dataset.stage === "1"));
+    stagePanels.forEach(panel => panel.classList.toggle("active", panel.id === "stage1Panel"));
+    clearVfx();
+    switchGameMode("city");
     saveGame(false);
     showNotification("Full reset.");
 });
@@ -1706,6 +1711,7 @@ setupBuildingButtons();
 loadGame();
 initAdventureUI();
 initVfx();
+initWorldUI();
 setTimeout(showIntroModal, 600);
 
 // Small bridge used by the account module; saves still use the existing game loader.
