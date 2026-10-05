@@ -1,10 +1,11 @@
 /* Shared layout with an earned, distinct identity for each zone. */
-body { --world-color: #f4bf76; --world-glow: #f4bf7619; --world-art: url('assets/zones/ashfall.png'); }
-body[data-zone="1"] { --world-color: #f4bf76; --world-glow: #f4bf7619; }
-body[data-zone="2"] { --world-color: #92e2b1; --world-glow: #92e2b119; }
-body[data-zone="3"] { --world-color: #ffab7d; --world-glow: #ffab7d19; }
-body[data-zone="4"] { --world-color: #c4a5ff; --world-glow: #c4a5ff19; }
-body[data-zone="5"] { --world-color: #a8dfff; --world-glow: #a8dfff19; }
+body { --world-color: #f4bf76; --world-glow: #f4bf7619; --world-art: url('../../assets/zones/ashfall.png'); }
+/* Keep URL tokens in this stylesheet: var() resolves relative URLs where used. */
+body[data-zone="1"] { --world-color: #f4bf76; --world-glow: #f4bf7619; --world-art: url('../../assets/zones/ashfall.png'); }
+body[data-zone="2"] { --world-color: #92e2b1; --world-glow: #92e2b119; --world-art: url('../../assets/zones/depot.png'); }
+body[data-zone="3"] { --world-color: #ffab7d; --world-glow: #ffab7d19; --world-art: url('../../assets/zones/foundry.png'); }
+body[data-zone="4"] { --world-color: #c4a5ff; --world-glow: #c4a5ff19; --world-art: url('../../assets/zones/relay.png'); }
+body[data-zone="5"] { --world-color: #a8dfff; --world-glow: #a8dfff19; --world-art: url('../../assets/zones/citadel.png'); }
 body, body[data-zone] {
     --blue: var(--world-color); --yellow: var(--world-color); --feedback-color: var(--world-color);
     background: radial-gradient(ellipse at 85% 0%, var(--world-glow), transparent 50%), #080b13;
@@ -92,15 +93,104 @@ body.companions-open .milestone-panel, body.companions-open .tutorial-hint { dis
 .story-index button:disabled small { color: #8999b0; }
 .story-reader { background: #111a28; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; min-width: 0; }
 .story-art { height: clamp(170px, 22vw, 260px); background-position: center; background-size: cover; border-bottom: 1px solid var(--border); }
-.story-art-1 { background-image: url('assets/zones/ashfall.png'); }
-.story-art-2 { background-image: url('assets/zones/depot.png'); }
-.story-art-3 { background-image: url('assets/zones/foundry.png'); }
-.story-art-4 { background-image: url('assets/zones/relay.png'); }
-.story-art-5 { background-image: url('assets/zones/citadel.png'); }
+.story-art-1 { background-image: url('../../assets/zones/ashfall.png'); }
+.story-art-2 { background-image: url('../../assets/zones/depot.png'); }
+.story-art-3 { background-image: url('../../assets/zones/foundry.png'); }
+.story-art-4 { background-image: url('../../assets/zones/relay.png'); }
+.story-art-5 { background-image: url('../../assets/zones/citadel.png'); }
 .story-page { padding: clamp(20px, 3vw, 36px); }
 .story-page h3 { font-size: clamp(24px, 3vw, 32px); line-height: 1.3; margin: 12px 0 24px; color: #fff; }
 .story-page > p:not(.eyebrow) { font-size: 15px; line-height: 1.85; color: #d2dfef; margin: 0 0 19px; max-width: 65ch; }
 .story-page button { padding: 10px 15px; }
+/* Native lore dialogs keep the chapter readable without leaving the current activity. */
+dialog.lore-modal {
+    --lore-color: var(--world-color, #f4bf76);
+    position: fixed; inset: 0; margin: auto; padding: 0;
+    width: min(680px, calc(100vw - 32px)); max-width: none;
+    max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px);
+    border: 1px solid var(--lore-color); border-radius: 18px;
+    background: #101827; color: #e7eef8;
+    overflow: hidden; box-shadow: 0 28px 100px #000b;
+}
+dialog.lore-modal:not([open]) { display: none; }
+dialog.lore-modal::backdrop { background: #02060edb; backdrop-filter: blur(7px); }
+body:has(dialog.lore-modal[open]) { overflow: hidden; }
+.lore-popup-shell {
+    display: flex; flex-direction: column; min-height: 0;
+    max-height: min(850px, calc(100vh - 32px));
+    max-height: min(850px, calc(100dvh - 32px));
+}
+.lore-popup-header {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    flex-shrink: 0; padding: 10px 14px 10px 24px;
+    border-bottom: 1px solid #ffffff16; background: #101827;
+}
+.lore-popup-header .eyebrow, .lore-popup-copy .eyebrow { margin: 0; color: var(--lore-color); line-height: 1.5; }
+.lore-close-icon {
+    display: grid; place-items: center; flex-shrink: 0;
+    width: 44px; height: 44px; padding: 0;
+    border: 1px solid #63738a; border-radius: 9px;
+    background: #1c293d; color: #eff5ff;
+    font-family: inherit; font-size: 28px; line-height: 1; cursor: pointer;
+}
+.lore-popup-shell > .story-art {
+    flex-shrink: 0; height: clamp(100px, 18vh, 170px); height: clamp(100px, 18dvh, 170px);
+    background-position: center 45%; border-bottom-color: #ffffff1a;
+}
+.lore-popup-copy {
+    min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+    padding: 24px 30px 8px; scrollbar-width: thin; scrollbar-color: #70839c #101827;
+}
+.lore-popup-copy h2 {
+    margin: 10px 0 20px; font-size: clamp(25px, 4vw, 34px);
+    color: #fff; line-height: 1.2; letter-spacing: -.5px; overflow-wrap: anywhere;
+}
+#loreText p { margin: 0 0 18px; max-width: 65ch; font-size: 15px; line-height: 1.85; color: #d4e0ee; }
+.lore-popup-footer {
+    flex-shrink: 0; padding: 16px 24px 20px;
+    border-top: 1px solid #ffffff1a; background: #101827;
+}
+.lore-popup-footer > p { margin: 0 0 12px; font-size: 12px; line-height: 1.5; color: #b6c6db; }
+.lore-popup-footer > div { display: flex; justify-content: flex-end; gap: 10px; }
+.lore-popup-footer button {
+    min-height: 44px; padding: 10px 15px; border: 1px solid var(--lore-color);
+    border-radius: 9px; background: var(--lore-color); color: #101827;
+    font-family: inherit; font-size: 13px; font-weight: 700; line-height: 1.4; cursor: pointer;
+}
+.lore-popup-footer .secondary-button { background: #1a283c; border-color: #63738a; color: #e8f1ff; }
+.lore-close-icon, .lore-popup-footer button { transition: transform .12s ease, filter .12s ease; }
+.lore-close-icon:hover, .lore-popup-footer button:hover { filter: brightness(1.12); }
+.lore-close-icon:active, .lore-popup-footer button:active { transform: scale(.97); }
+.lore-close-icon:focus-visible, .lore-popup-footer button:focus-visible { outline: 2px solid var(--lore-color); outline-offset: 3px; }
+@media (max-width: 520px) {
+    dialog.lore-modal {
+        width: calc(100vw - 24px); border-radius: 14px;
+        max-height: calc(100vh - 24px);
+        max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    }
+    .lore-popup-shell {
+        max-height: calc(100vh - 24px);
+        max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    }
+    .lore-popup-header { padding: 8px 10px 8px 18px; }
+    .lore-popup-copy { padding: 20px 20px 4px; }
+    #loreText p { font-size: 14px; line-height: 1.8; }
+    .lore-popup-footer { padding: 14px 16px 16px; }
+    .lore-popup-footer > div { display: grid; grid-template-columns: 1fr 1fr; }
+    .lore-popup-footer button { padding: 10px 8px; font-size: 12px; }
+}
+@media (max-height: 480px) {
+    .lore-popup-shell > .story-art { height: 64px; }
+    .lore-popup-header { padding-top: 4px; padding-bottom: 4px; }
+    .lore-popup-copy { padding-top: 14px; }
+    .lore-popup-copy h2 { margin: 6px 0 12px; font-size: 24px; }
+    #loreText p { font-size: 14px; line-height: 1.7; margin-bottom: 14px; }
+    .lore-popup-footer { padding-top: 10px; padding-bottom: 10px; }
+    .lore-popup-footer > p { margin-bottom: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .lore-close-icon, .lore-popup-footer button { transition: none; }
+}
 @media (max-width: 1180px) {
     .game-container > .game-mode-tabs { grid-row: 1; }
     .game-mode-tab { flex: 1 1 140px; }

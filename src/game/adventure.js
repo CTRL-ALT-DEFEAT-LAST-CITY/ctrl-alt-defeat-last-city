@@ -217,8 +217,8 @@ function grantZoneResource(stage, amount, feedback = true) {
 function zoneRate(stage) {
     return [null, getSalvagePerSecond, getScrapPerSecond, getPartsPerSecond, getCircuitsPerSecond, getCoresPerSecond][stage]();
 }
-function zoneAction(stage, action, choice) {
-    if (!isZoneUnlocked(stage)) return;
+function zoneAction(stage, action, choice, automatic = false) {
+    if (!isZoneUnlocked(stage) || !gameStarted || window.LastCityCloud?.isSwitching?.() || el("accountModal")?.open) return;
     if (handleProgressionAction(stage, action, choice)) return;
     if (stage === 4 && action === "node") return;
     const a = game.adventure;
@@ -233,15 +233,22 @@ function zoneAction(stage, action, choice) {
         a.keys = Math.max(previousKeys, a.siteSearches.filter(count => count >= 8).length
             + Number(a.siteSearches[0] >= 14) + Number(a.siteSearches[1] >= 14));
         const value = searchReward(choice);
-        grantZoneResource(2, value);
-        showNotification(a.keys > previousKeys ? "Depot key recovered! " + a.keys + "/5" : "+" + formatNumber(value) + " Scrap recovered");
-        playSfx("dispatch");
+        grantZoneResource(2, value, !automatic);
+        if (a.keys > previousKeys || !automatic) showNotification(a.keys > previousKeys ? "Depot key recovered! " + a.keys + "/5" : "+" + formatNumber(value) + " Scrap recovered");
+        if (!automatic) playSfx("dispatch");
+    } else if (stage === 5 && action === "channel") {
+        if (Date.now() < (a.coreReadyAt || 0)) return;
+        a.coreReadyAt = Date.now() + 1000;
+        const reward = coreChannelReward();
+        grantZoneResource(5, reward);
+        showFloatingGain(el("zone5"), "+" + formatNumber(reward) + " Cores");
+        playSfx("click");
     } else if (stage === 5 && action === "shield") {
         if (!Number.isInteger(choice) || choice < 0 || choice > 2 || a.bossDefeated) return;
         if (!a.shields.includes(choice)) a.shields.push(choice);
     } else if (stage === 5 && action === "fire") {
-        if (a.shields.length !== 3 || game.cores < 15 || a.bossDefeated) return showNotification("Disable all shields and have 15 Cores ready.");
-        game.cores -= 15;
+        if (a.shields.length !== 3 || game.cores < cannonCost() || a.bossDefeated) return showNotification("Disable all shields and have " + cannonCost() + " Cores ready.");
+        game.cores -= cannonCost();
         a.shields = [];
         a.bossHealth = Math.max(0, a.bossHealth - 25);
         playSfx("critical");
@@ -267,10 +274,10 @@ function renderZone(stage) {
     const zone = ZONES[stage], a = game.adventure, objective = zoneObjective(stage);
     let activity = "";
     if (stage === 5) {
-        activity = '<div class="guardian-avatar">' + (a.bossDefeated ? "🏆" : "🤖") + '</div><div class="guardian-health"><div style="width:' + a.bossHealth + '%"></div></div><div class="activity-buttons">' + [0, 1, 2].map(n => '<button data-action="shield" data-choice="' + n + '" ' + (a.shields.includes(n) || a.bossDefeated ? "disabled" : "") + '>' + (a.shields.includes(n) ? "✓ Disabled" : "Break shield " + (n + 1)) + '</button>').join("") + '<button data-action="fire" ' + (a.shields.length !== 3 || game.cores < 15 || a.bossDefeated ? "disabled" : "") + '>Fire cannon · 15 Cores</button></div><p class="activity-tip">Each shot deals 25 damage. Shields regenerate after a shot. Victory grants a permanent ×2 Core bonus.</p>';
+        activity = '<div class="activity-buttons"><button data-action="channel" ' + (Date.now() < (a.coreReadyAt || 0) ? 'disabled' : '') + '>Channel reactor · +' + formatNumber(coreChannelReward()) + ' Cores</button></div><div class="guardian-avatar">' + (a.bossDefeated ? "🏆" : "🤖") + '</div><div class="guardian-health"><div style="width:' + a.bossHealth + '%"></div></div><div class="activity-buttons">' + [0, 1, 2].map(n => '<button data-action="shield" data-choice="' + n + '" ' + (a.shields.includes(n) || a.bossDefeated ? "disabled" : "") + '>' + (a.shields.includes(n) ? "✓ Disabled" : "Break shield " + (n + 1)) + '</button>').join("") + '<button data-action="fire" ' + (a.shields.length !== 3 || game.cores < cannonCost() || a.bossDefeated ? "disabled" : "") + '>Fire cannon · ' + cannonCost() + ' Cores</button></div><p class="activity-tip">Cannon costs rise with each shot: 100 → 200 → 400 → 800 Cores. Each shot deals 25 damage. Shields regenerate after a shot. Victory grants permanent ×2 Core production and the Legacy Glyph Archive.</p>';
     }
     const completed = stage === 5 ? a.bossDefeated : isZoneUnlocked(stage + 1);
-    mount.innerHTML = '<article class="zone-scene zone-' + stage + '"><div class="zone-scenery" aria-hidden="true"><span>' + zone.icon + '</span><i></i><i></i><i></i></div><div class="zone-content"><p class="eyebrow">ZONE ' + stage + ' · ' + zone.label.toUpperCase() + '</p><h2>' + zone.name + '</h2><p class="zone-lore">' + zone.lore + '</p><div class="zone-quest"><strong>' + (completed ? "✓ Zone objective complete" : zone.quest) + '</strong><span>' + objective.detail + '</span></div>' + activity + (stage < 5 ? '<button class="zone-unlock" data-action="unlock" ' + (completed || !objective.ready ? "disabled" : "") + '>' + (completed ? "✓ " + zone.next + " unlocked" : stage === 1 ? "Restore the beacon → Settlement" : "Open " + zone.next) + '</button>' : "") + '<p class="zone-pet-summary">Companion power: ×' + getCompanionMultiplier(stage).toFixed(2) + ' · Hatch ' + zone.egg + ' in the Companions tab.</p></div></article>';
+    mount.innerHTML = '<article class="zone-scene zone-' + stage + '"><div class="zone-scenery" aria-hidden="true"><span>' + zone.icon + '</span><i></i><i></i><i></i></div><div class="zone-content"><p class="eyebrow">ZONE ' + stage + ' · ' + zone.label.toUpperCase() + '</p><h2>' + zone.name + '</h2><p class="zone-lore">' + zone.lore + '</p><div class="zone-quest"><strong>' + (completed ? "✓ Zone objective complete" : zone.quest) + '</strong><span>' + objective.detail + '</span></div>' + activity + infrastructureMarkup(stage) + (stage < 5 ? '<button class="zone-unlock" data-action="unlock" ' + (completed || !objective.ready ? "disabled" : "") + '>' + (completed ? "✓ " + zone.next + " unlocked" : stage === 1 ? "Restore the beacon → Settlement" : "Open " + zone.next) + '</button>' : "") + '<p class="zone-pet-summary">Companion power: ×' + getCompanionMultiplier(stage).toFixed(2) + ' · Hatch ' + zone.egg + ' in the Companions tab.</p></div></article>';
 }
 function renderCompanions() {
     const panel = el("companionPanel");

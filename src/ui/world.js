@@ -43,35 +43,121 @@ const STORY_ENTRIES = [
       text: ["People still call it the Last City. You understand why. It reminds them how close the light came to going out.", "But new roads stretch beyond the old map. Other settlements answer the beacon. The city is no longer an ending.", "You close this journal and leave a fresh one on the table. Tomorrow, someone else will begin."] }
 ];
 let storySelected = "prologue", storyScope = "all", worldUIReady = false;
+let pendingLore = [], activeLoreId = "", loreReturnFocus = null, lorePumpPending = false, loreSession = 0;
 
 function normalizeStory(saved = {}) {
     return {
         unlocked: Object.fromEntries(STORY_ENTRIES.filter(entry => Number.isFinite(saved?.unlocked?.[entry.id]) && saved.unlocked[entry.id] > 0).map(entry => [entry.id, saved.unlocked[entry.id]])),
-        read: Object.fromEntries(STORY_ENTRIES.filter(entry => saved?.read?.[entry.id] === true && Number.isFinite(saved?.unlocked?.[entry.id]) && saved.unlocked[entry.id] > 0).map(entry => [entry.id, true]))
+        read: Object.fromEntries(STORY_ENTRIES.filter(entry => saved?.read?.[entry.id] === true && Number.isFinite(saved?.unlocked?.[entry.id]) && saved.unlocked[entry.id] > 0).map(entry => [entry.id, true])),
+        presented: Object.fromEntries(STORY_ENTRIES.filter(entry => (saved?.presented?.[entry.id] === true || saved?.read?.[entry.id] === true) && Number.isFinite(saved?.unlocked?.[entry.id]) && saved.unlocked[entry.id] > 0).map(entry => [entry.id, true]))
     };
 }
 function unlockedStories() { return STORY_ENTRIES.filter(entry => game.story.unlocked[entry.id]); }
 function unreadStories() { return unlockedStories().filter(entry => !game.story.read[entry.id]); }
 function checkStoryUnlocks() {
     const fresh = STORY_ENTRIES.filter(entry => !game.story.unlocked[entry.id] && entry.check());
-    fresh.forEach(entry => { game.story.unlocked[entry.id] = Date.now(); });
+    fresh.forEach(entry => {
+        game.story.unlocked[entry.id] = Date.now();
+        if (!pendingLore.includes(entry.id)) pendingLore.push(entry.id);
+    });
     // This timestamp is the discovery time, not a reward or a second gameplay action.
     return fresh;
 }
+function queueUnpresentedLore() {
+    for (const entry of unlockedStories()) {
+        if (!game.story.presented[entry.id] && !game.story.read[entry.id] && !pendingLore.includes(entry.id)) pendingLore.push(entry.id);
+    }
+}
+function lorePopupBlocked() {
+    return !gameStarted || document.hidden || window.LastCityCloud?.isSwitching?.()
+        || ["introModal", "accountModal", "hatchModal", "petMergeModal"].some(id => el(id)?.open)
+        || game.showOfflineModal || !!document.querySelector(".offline-modal");
+}
+function clearLorePopupSession() {
+    loreSession++;
+    pendingLore = []; activeLoreId = ""; lorePumpPending = false; loreReturnFocus = null;
+    el("loreModal")?.close();
+}
+function updateLoreArchiveHint() {
+    const extra = pendingLore.filter(id => id !== activeLoreId && game.story.unlocked[id] && !game.story.read[id]).length;
+    if (el("loreArchiveHint")) el("loreArchiveHint").textContent = "Saved in Stories. Close any time to keep playing."
+        + (extra ? " " + extra + " more chapter" + (extra === 1 ? "" : "s") + " available in Stories." : "");
+}
+function openLorePopup(id) {
+    const entry = STORY_ENTRIES.find(story => story.id === id), modal = el("loreModal");
+    if (!entry || !game.story.unlocked[id] || !modal || lorePopupBlocked()) return false;
+    if (modal.open) return activeLoreId === id;
+    if (glyphAuto) stopGlyphAuto("Auto-roll stopped while reading a story.");
+    if (autoHatchSession) stopAutoHatch("Auto hatch stopped while reading a story.");
+    loreReturnFocus = document.activeElement;
+    activeLoreId = id;
+    modal.style.setProperty("--lore-color", WORLD_THEMES[entry.stage].color);
+    el("loreChapter").textContent = "CHAPTER " + entry.stage + " · " + WORLD_THEMES[entry.stage].name;
+    el("loreSpeaker").textContent = entry.speaker;
+    el("loreTitle").textContent = entry.title;
+    el("loreText").innerHTML = entry.text.map(paragraph => "<p>" + paragraph + "</p>").join("");
+    el("loreArtwork").className = "story-art story-art-" + entry.stage;
+    el("loreArtwork").setAttribute("aria-label", WORLD_THEMES[entry.stage].name + " landscape");
+    updateLoreArchiveHint();
+    modal.showModal();
+    el("loreText").parentElement.scrollTop = 0;
+    // Remember the presentation immediately, including refreshes while reading.
+    game.story.presented[id] = true;
+    saveGame(false);
+    animateVfx(modal, [{ opacity: .5, transform: "translateY(8px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 220 });
+    return true;
+}
+function closeLorePopup() {
+    if (!activeLoreId) return;
+    if (window.LastCityCloud?.isSwitching?.()) { clearLorePopupSession(); return; }
+    if (game.story.unlocked[activeLoreId]) game.story.read[activeLoreId] = true;
+    // Close means keep playing, not another chain of modal windows.
+    for (const id of pendingLore) if (game.story.unlocked[id]) game.story.presented[id] = true;
+    const focus = loreReturnFocus;
+    clearLorePopupSession();
+    updateGame(); saveGame(false);
+    if (focus?.isConnected !== false) focus?.focus?.({ preventScroll: true });
+}
+function maybeShowLorePopup() {
+    if (window.LastCityCloud?.isSwitching?.()) {
+        // Keep queued chapters for the same save, but never leave its text over account UI.
+        if (activeLoreId) { activeLoreId = ""; loreReturnFocus = null; el("loreModal")?.close(); }
+        return;
+    }
+    if (el("loreModal")?.open) { updateLoreArchiveHint(); return; }
+    pendingLore = pendingLore.filter(id => game.story.unlocked[id] && !game.story.presented[id] && !game.story.read[id]);
+    if (lorePopupBlocked() || currentGameMode === "stories" || !pendingLore.length) return;
+    openLorePopup(pendingLore[0]);
+}
+function scheduleLorePopup() {
+    if (lorePumpPending || (!pendingLore.length && !activeLoreId)) return;
+    const session = loreSession;
+    lorePumpPending = true;
+    // Defer until the purchase/startup action has opened any higher-priority dialog.
+    setTimeout(() => {
+        if (session !== loreSession) return;
+        lorePumpPending = false;
+        maybeShowLorePopup();
+    }, 0);
+}
 function switchGameMode(mode) {
-    if (!["city", "upgrades", "stats", "companions", "stories"].includes(mode) || window.LastCityCloud?.isSwitching?.()) return;
+    if (!["city", "upgrades", "stats", "companions", "stories", "glyphs"].includes(mode) || window.LastCityCloud?.isSwitching?.()) return;
     const changed = currentGameMode !== mode;
     currentGameMode = mode;
-    ["upgrades", "stats", "companions", "stories"].forEach(name => document.body.classList.toggle(name + "-open", mode === name));
+    ["upgrades", "stats", "companions", "stories", "glyphs"].forEach(name => document.body.classList.toggle(name + "-open", mode === name));
     gameModeTabs.forEach(tab => { tab.classList.toggle("active", tab.dataset.mode === mode); tab.setAttribute("aria-pressed", String(tab.dataset.mode === mode)); });
     updateGame();
-    if (changed) animateNavigation(document.querySelector('.game-mode-tab[data-mode="' + mode + '"]'));
+    if (changed) {
+        animateNavigation(document.querySelector('.game-mode-tab[data-mode="' + mode + '"]'));
+        scrollPlayerSection();
+    }
 }
 function openStory(id) {
     if (!game.story.unlocked[id] || !STORY_ENTRIES.some(entry => entry.id === id) || window.LastCityCloud?.isSwitching?.()) return false;
     storySelected = id;
     if (storyScope !== "all" && Number(storyScope) !== STORY_ENTRIES.find(entry => entry.id === id).stage) storyScope = "all";
     game.story.read[id] = true;
+    game.story.presented[id] = true;
     switchGameMode("stories");
     renderStoryArchive();
     animateVfx(el("storyReaderTitle")?.closest?.(".story-reader"), [{ opacity: .5 }, { opacity: 1 }], { duration: 250 });
@@ -93,7 +179,7 @@ function renderStoryArchive() {
             const unlocked = !!game.story.unlocked[entry.id], unread = unlocked && !game.story.read[entry.id];
             return '<button data-story-id="' + entry.id + '" aria-pressed="' + (entry.id === storySelected) + '" ' + (!unlocked ? "disabled" : "") + '><small>CHAPTER ' + entry.stage + (unread ? ' · UNREAD' : unlocked ? ' · RECOVERED' : ' · LOCKED') + '</small><strong>' + (unlocked ? entry.title : 'Unrecovered transmission') + '</strong><span>' + (unlocked ? entry.speaker : entry.hint) + '</span></button>';
         }).join("") + '</nav><article class="story-reader" aria-labelledby="storyReaderTitle">' + (selected
-            ? '<div class="story-art story-art-' + selected.stage + '" role="img" aria-label="' + WORLD_THEMES[selected.stage].name + ' landscape"></div><div class="story-page"><p class="eyebrow">' + WORLD_THEMES[selected.stage].name + ' · ' + selected.speaker + '</p><h3 id="storyReaderTitle" tabindex="-1">' + selected.title + '</h3>' + selected.text.map(paragraph => '<p>' + paragraph + '</p>').join("") + '<button data-story-id="' + selected.id + '" class="secondary-button">' + (game.story.read[selected.id] ? "Read again" : "Mark as read") + '</button></div>'
+            ? '<div class="story-art story-art-' + selected.stage + '" role="img" aria-label="' + WORLD_THEMES[selected.stage].name + ' landscape"></div><div class="story-page"><p class="eyebrow">' + WORLD_THEMES[selected.stage].name + ' · ' + selected.speaker + '</p><h3 id="storyReaderTitle" tabindex="-1">' + selected.title + '</h3>' + selected.text.map(paragraph => '<p>' + paragraph + '</p>').join("") + '<button data-story-popup="' + selected.id + '" class="secondary-button">Read in popup</button></div>'
             : '<div class="story-page"><h3 id="storyReaderTitle" tabindex="-1">A signal still waiting</h3><p>Complete this zone’s milestones to recover its stories. You can return to any unlocked chapter whenever you like.</p></div>') + '</article></div>';
     if (panel.innerHTML !== markup) panel.innerHTML = markup;
 }
@@ -101,7 +187,8 @@ function renderWorldUI() {
     const theme = WORLD_THEMES[currentStageView], unread = unreadStories(), latest = unread[unread.length - 1];
     document.body.dataset.zone = currentStageView;
     stageTabs.forEach(tab => tab.setAttribute("aria-pressed", String(Number(tab.dataset.stage) === currentStageView)));
-    document.body.style.setProperty("--world-art", "url('assets/zones/" + theme.art + ".png')");
+    // Artwork URLs live with the CSS that consumes them; inline relative var()
+    // values broke after styles moved into src/styles. data-zone selects the art.
     const values = { worldZoneName: theme.name, worldZoneMood: theme.mood, worldZoneIntro: theme.intro,
         worldZoneNumber: "ZONE 0" + currentStageView + " / 05", worldActivity: theme.activity,
         worldObjective: (currentStageView < 5 ? isZoneUnlocked(currentStageView + 1) : game.adventure.bossDefeated) ? "Objective complete · keep building your legacy" : ZONES[currentStageView].quest };
@@ -114,6 +201,7 @@ function renderWorldUI() {
     if (el("storyNoticeTitle") && el("storyNoticeTitle").textContent !== noticeTitle) el("storyNoticeTitle").textContent = noticeTitle;
     if (el("readLatestStory")) el("readLatestStory").dataset.storyId = latest?.id || "";
     renderStoryArchive();
+    scheduleLorePopup();
 }
 function initWorldUI() {
     if (worldUIReady) return;
@@ -134,14 +222,25 @@ function initWorldUI() {
     el("storyPanel")?.addEventListener("click", event => {
         const button = event.target.closest?.("button");
         if (!button || button.disabled) return;
-        if (button.dataset.storyId) openStory(button.dataset.storyId);
+        if (button.dataset.storyPopup) openLorePopup(button.dataset.storyPopup);
+        else if (button.dataset.storyId) openStory(button.dataset.storyId);
         else if (button.dataset.storyFilter && ["all", "1", "2", "3", "4", "5"].includes(button.dataset.storyFilter)) {
             storyScope = button.dataset.storyFilter;
             renderStoryArchive();
             animateViewEntry(el("storyPanel"));
         }
     });
-    el("readLatestStory")?.addEventListener("click", event => openStory(event.currentTarget.dataset.storyId));
+    el("readLatestStory")?.addEventListener("click", event => openLorePopup(event.currentTarget.dataset.storyId));
+    el("loreCloseIcon")?.addEventListener("click", closeLorePopup);
+    el("loreCloseButton")?.addEventListener("click", closeLorePopup);
+    el("loreModal")?.addEventListener("cancel", event => { event.preventDefault(); closeLorePopup(); });
+    el("loreModal")?.addEventListener("close", () => { if (!el("loreModal").open && activeLoreId) closeLorePopup(); });
+    el("loreViewArchive")?.addEventListener("click", () => {
+        const id = activeLoreId;
+        closeLorePopup();
+        if (id) openStory(id);
+    });
+    document.addEventListener?.("visibilitychange", () => { if (!document.hidden) scheduleLorePopup(); });
     el("worldExploreButton")?.addEventListener("click", () => {
         switchGameMode("city");
         el("zone" + currentStageView)?.scrollIntoView?.({ behavior: canPlayVfx() ? "smooth" : "auto", block: "start" });

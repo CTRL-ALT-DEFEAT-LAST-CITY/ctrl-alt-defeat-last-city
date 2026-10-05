@@ -80,7 +80,7 @@ function animateViewEntry(panel) {
 }
 function animateNavigation(tab) {
     const panel = currentGameMode === "stats" ? el("statsPanel")
-        : currentGameMode === "companions" ? el("companionPanel") : currentGameMode === "stories" ? el("storyPanel") : el("stage" + currentStageView + "Panel");
+        : currentGameMode === "companions" ? el("companionPanel") : currentGameMode === "stories" ? el("storyPanel") : currentGameMode === "glyphs" ? el("glyphPanel") : el("stage" + currentStageView + "Panel");
     animateViewEntry(panel);
     pulseVfx(tab);
 }

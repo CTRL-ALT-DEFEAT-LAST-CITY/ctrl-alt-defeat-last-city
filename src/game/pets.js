@@ -126,7 +126,7 @@ function companionContentMarkup(stage) {
 
 function autoHatchContextValid(session) {
     return !!session && currentGameMode === "companions" && companionView === "eggs"
-        && currentStageView === session.stage && isZoneUnlocked(session.stage) && !document.hidden;
+        && currentStageView === session.stage && isZoneUnlocked(session.stage) && !document.hidden && !el("loreModal")?.open;
 }
 function syncAutoHatchControls() {
     const button = el("hatchAutoStopButton");

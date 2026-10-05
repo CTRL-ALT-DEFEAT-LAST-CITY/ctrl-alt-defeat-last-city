@@ -5,23 +5,20 @@ const PROGRESSION_DEFAULTS = {
 };
 const INFRASTRUCTURE = {
     2: {
-        depotCamp: { name: "Depot Camp", icon: "⛺", cost: 90, max: 10, output: .6, desc: "+0.6 Scrap/sec · Lv 2 needed for the gate" },
-        sortingMill: { name: "Sorting Mill", icon: "⚙️", cost: 220, max: 10, output: 1.5, desc: "+1.5 Scrap/sec" },
-        searchTools: { name: "Search Tools", icon: "🔍", cost: 60, max: 5, desc: "+20% search yield per level" },
-        expeditionCrew: { name: "Expedition Crew", icon: "🧭", cost: 160, max: 5, desc: "Search cooldown reduced by 0.4s per level" }
+        depotCamp: { name: "Depot Camp", icon: "⛺", cost: 90, max: 25, output: 2, desc: "+2 base Scrap/sec · Lv 2 needed for the gate" },
+        sortingMill: { name: "Sorting Mill", icon: "⚙️", cost: 220, max: 25, multiplier: 1.18, desc: "×1.18 local passive production per building" }
     },
     3: {
-        assemblyLine: { name: "Assembly Line", icon: "🏗️", cost: 140, max: 10, output: .8, desc: "+0.8 Parts/sec · Lv 2 needed for the gate" },
-        machineShop: { name: "Machine Shop", icon: "🛠️", cost: 320, max: 10, output: 2, desc: "+2 Parts/sec" },
-        precisionTools: { name: "Precision Tools", icon: "🔧", cost: 100, max: 5, desc: "+20% delivery profit per level" },
-        coolingSystem: { name: "Cooling System", icon: "❄️", cost: 200, max: 5, desc: "Engine processing takes 1s less per level" }
+        assemblyLine: { name: "Assembly Line", icon: "🏗️", cost: 140, max: 25, output: 2, desc: "+2 base Parts/sec · Lv 2 needed for the gate" },
+        machineShop: { name: "Machine Shop", icon: "🛠️", cost: 320, max: 25, multiplier: 1.18, desc: "×1.18 local passive production per building" }
     },
     4: {
-        signalExtractor: { name: "Signal Extractor", icon: "📡", cost: 75, max: 10, output: .5, desc: "+0.5 Circuits/sec" },
-        capacitorBank: { name: "Capacitor Bank", icon: "🔋", cost: 180, max: 10, output: 1.2, desc: "+1.2 Circuits/sec" },
-        fieldCollector: { name: "Energy Collector", icon: "💠", cost: 45, max: 8, desc: "+25% pickup value per level" },
-        pulseFrequency: { name: "Pulse Frequency", icon: "⚡", cost: 100, max: 5, desc: "Energy appears 18% faster per level" },
-        collectionDrone: { name: "Collection Drone", icon: "🛰️", cost: 800, max: 1, desc: "Auto-collect one pickup every 6 seconds" }
+        signalExtractor: { name: "Signal Extractor", icon: "📡", cost: 75, max: 25, output: 1, desc: "+1 base Circuits/sec" },
+        capacitorBank: { name: "Capacitor Bank", icon: "🔋", cost: 180, max: 25, multiplier: 1.18, desc: "×1.18 local passive production per building" }
+    },
+    5: {
+        coreExtractor: { name: "Core Extractor", icon: "💠", cost: 150, max: 25, output: 1, desc: "+1 base Cores/sec" },
+        reactorConduit: { name: "Reactor Conduit", icon: "⚡", cost: 400, max: 25, multiplier: 1.18, desc: "×1.18 local passive production per building" }
     }
 };
 const ENGINE_RECIPES = [
@@ -36,12 +33,15 @@ function normalizeProgression(saved = {}) {
 }
 function infrastructureLevel(key) { return game.adventure.progression.infrastructure[key] || 0; }
 function infrastructureIncome(stage) {
-    return Object.entries(INFRASTRUCTURE[stage] || {}).reduce((sum, [key, def]) => sum + (def.output || 0) * infrastructureLevel(key), 0);
+    return Object.entries(INFRASTRUCTURE[stage] || {}).reduce((sum, [key, def]) => sum + (def.output || 0) * (Math.pow(1.3, infrastructureLevel(key)) - 1) / .3, 0);
 }
-function infrastructureCost(def, level) { return Math.floor(def.cost * Math.pow(1.45, level)); }
+function infrastructureMultiplier(stage) {
+    return Object.entries(INFRASTRUCTURE[stage] || {}).reduce((value, [key, def]) => value * Math.pow(def.multiplier || 1, infrastructureLevel(key)), 1);
+}
+function infrastructureCost(def, level) { return Math.ceil(def.cost * Math.pow(def.multiplier || 1.3, level)); }
 function buyInfrastructure(stage, key) {
     const def = INFRASTRUCTURE[stage]?.[key];
-    if (!def || !isZoneUnlocked(stage)) return;
+    if (!def || !isZoneUnlocked(stage) || !gameStarted || window.LastCityCloud?.isSwitching?.()) return;
     const level = infrastructureLevel(key), cost = infrastructureCost(def, level), currency = ZONES[stage].currency;
     if (level >= def.max || game[currency] < cost) return;
     game[currency] -= cost;
@@ -50,15 +50,18 @@ function buyInfrastructure(stage, key) {
     updateGame();
     saveGame(false);
 }
-function beaconCost() { return [100000, 400000, 1200000][game.adventure.progression.beaconModules] || 0; }
+function beaconCost() { return [5000, 15000, 40000][game.adventure.progression.beaconModules] || 0; }
 function engineRecipe() { return ENGINE_RECIPES[Math.floor(game.adventure.deliveries / 6) % ENGINE_RECIPES.length]; }
-function engineCost() { return 35 + Math.floor(game.adventure.deliveries / 6) * 15; }
-function engineDuration() { return Math.max(3000, 8000 - infrastructureLevel("coolingSystem") * 1000); }
-function searchDuration() { return Math.max(2500, 4500 - infrastructureLevel("expeditionCrew") * 400); }
-function searchReward(site) {
+function engineCost() { return 35 + Math.min(2, Math.floor(game.adventure.deliveries / 6)) * 15; }
+function engineDuration(level = game.stage3Upgrades.assemblySpeed) { return Math.max(2500, 8000 - infrastructureLevel("coolingSystem") * 1000 - Math.min(4, level) * 750 - Math.max(0, level - 4) * 400); }
+function searchDuration(level = game.stage2Upgrades.survivorSpeed) { return Math.max(2000, 4500 - infrastructureLevel("expeditionCrew") * 400 - Math.min(4, level) * 500 - Math.max(0, level - 4) * 125); }
+function searchReward(site, level = game.stage2Upgrades.survivorSpeed) {
     const base = [8, 12, 10][site] * (1 + infrastructureLevel("searchTools") * .2);
-    // Sublinear scaling keeps the activity useful without exponential payouts.
-    return base * getCompanionMultiplier(2) * (1 + Math.sqrt(Math.max(0, zoneRate(2))) * .08);
+    // Active tools scale rewards; production drives specialize in passive income.
+    return upgradeAmount('survivorSpeed', base, level) * stageResetMultiplier(2) * previousStageMultiplier(2) * getCompanionMultiplier(2) * getGlyphMultiplier(2) * (1 + Math.sqrt(Math.max(0, zoneRate(2))) * .08);
+}
+function engineProfit(level = game.stage3Upgrades.assemblySpeed) {
+    return upgradeAmount('assemblySpeed', 12, level) * stageResetMultiplier(3) * previousStageMultiplier(3) * (1 + infrastructureLevel("precisionTools") * .2) * getCompanionMultiplier(3) * getGlyphMultiplier(3);
 }
 function progressionObjective(stage) {
     const a = game.adventure, p = a.progression;
@@ -83,7 +86,7 @@ function progressionObjective(stage) {
         ready: p.fieldCollected >= 80 && p.relayTowers >= 3
     };
 }
-function handleProgressionAction(stage, action, choice) {
+function handleProgressionAction(stage, action, choice, automatic = false) {
     const a = game.adventure, p = a.progression;
     if (action === "infrastructure") { buyInfrastructure(stage, choice); return true; }
     if (stage === 1 && action === "beacon") {
@@ -104,16 +107,15 @@ function handleProgressionAction(stage, action, choice) {
         a.assembly = [];
         p.production = {
             readyAt: Date.now() + engineDuration(), startedAt: Date.now(),
-            reward: cost + 12 * (1 + infrastructureLevel("precisionTools") * .2) * getCompanionMultiplier(3)
+            reward: cost + engineProfit()
         };
-        playSfx("build");
+        if (!automatic) playSfx("build");
     } else if (stage === 3 && action === "deliver") {
         if (!p.production || Date.now() < p.production.readyAt) return true;
-        grantZoneResource(3, p.production.reward);
+        grantZoneResource(3, p.production.reward, !automatic);
         a.deliveries++;
         p.production = null;
-        showNotification("Engine delivered! " + a.deliveries + "/18");
-        playSfx("dispatch");
+        if (!automatic) { showNotification("Engine delivered! " + a.deliveries + "/18"); playSfx("dispatch"); }
     } else if (stage === 4 && action === "tower") {
         const required = [20, 45, 80][p.relayTowers], cost = [150, 450, 900][p.relayTowers];
         if (p.relayTowers >= 3 || p.fieldCollected < required || game.circuits < cost) return true;
@@ -125,7 +127,11 @@ function handleProgressionAction(stage, action, choice) {
     saveGame(false);
     return true;
 }
-function fieldInterval() { return 2800 / (1 + infrastructureLevel("pulseFrequency") * .18); }
+function fieldInterval(level = game.stage4Upgrades.fieldPower) { return Math.max(800, (1800 - Math.min(4, level) * 200 - Math.max(0, level - 4) * 50) / (1 + infrastructureLevel("pulseFrequency") * .18)); }
+function fieldReward(charged, level = game.stage4Upgrades.fieldPower) {
+    // Charged nodes remain worth three blue nodes, including the flat phase.
+    return upgradeAmount('fieldPower', 5, level) * (charged ? 3 : 1) * (1 + infrastructureLevel("fieldCollector") * .25) * stageResetMultiplier(4) * previousStageMultiplier(4) * getCompanionMultiplier(4) * getGlyphMultiplier(4);
+}
 function spawnFieldNode() {
     const p = game.adventure.progression;
     if (p.fieldNodes.length >= 10) return;
@@ -141,7 +147,7 @@ function collectFieldNode(id, auto = false) {
     const index = p.fieldNodes.findIndex(node => node.id === id);
     if (index < 0) return false;
     const [pickup] = p.fieldNodes.splice(index, 1);
-    const reward = (pickup.charged ? 15 : 5) * (1 + infrastructureLevel("fieldCollector") * .25) * getCompanionMultiplier(4);
+    const reward = fieldReward(pickup.charged);
     p.fieldCollected++;
     grantZoneResource(4, reward, !auto);
     const anchor = el("energy-" + id);
@@ -151,24 +157,28 @@ function collectFieldNode(id, auto = false) {
 }
 let lastDroneCollection = 0;
 function updateCollectionField(now = Date.now()) {
-    if (!game.stage4Unlocked || currentStageView !== 4 || currentGameMode !== "city" || document.hidden) return;
+    if (!gameStarted || !game.stage4Unlocked || document.hidden || window.LastCityCloud?.isSwitching?.() || el("accountModal")?.open) return;
+    const onField = currentStageView === 4 && currentGameMode === "city";
+    if (!onField && !stageAutomationOwned(4)) return;
     const p = game.adventure.progression;
     if (!p.fieldLastSpawn) {
         for (let i = 0; i < 5; i++) spawnFieldNode();
         p.fieldLastSpawn = now;
     }
     if (now - p.fieldLastSpawn >= fieldInterval()) { spawnFieldNode(); p.fieldLastSpawn = now; }
-    if (infrastructureLevel("collectionDrone") > 0 && now - lastDroneCollection >= 6000 && p.fieldNodes.length) {
+    if (stageAutomationOwned(4) && now - lastDroneCollection >= 4000 && p.fieldNodes.length) {
         lastDroneCollection = now;
         collectFieldNode(p.fieldNodes[0].id, true);
     }
     renderFieldNodes();
 }
 function infrastructureMarkup(stage) {
-    return '<section class="zone-workshop"><h3>Zone buildings & equipment</h3><div class="infrastructure-grid">' +
+    if (!INFRASTRUCTURE[stage]) return "";
+    return '<section class="zone-workshop"><h3>Production buildings · kept on reset</h3><div class="infrastructure-grid">' +
         Object.entries(INFRASTRUCTURE[stage] || {}).map(([key, def]) => {
             const level = infrastructureLevel(key), cost = infrastructureCost(def, level);
-            return '<button data-action="infrastructure" data-choice="' + key + '" ' + (level >= def.max || game[ZONES[stage].currency] < cost ? "disabled" : "") + '><strong>' + def.icon + " " + def.name + '</strong><small>' + def.desc + '</small><span>Lv ' + level + "/" + def.max + " · " + (level >= def.max ? "MAXED" : formatNumber(cost) + " " + ZONES[stage].label) + '</span>' + purchaseProgressMarkup(game[ZONES[stage].currency], cost, level >= def.max) + '</button>';
+            const benefit = def.output ? '+' + formatNumber(def.output * Math.pow(1.3,level)) + ' base ' + ZONES[stage].label + '/sec on next build' : '×' + def.multiplier + ' passive production per build';
+            return '<button data-action="infrastructure" data-choice="' + key + '" ' + (level >= def.max || game[ZONES[stage].currency] < cost ? "disabled" : "") + '><strong>' + def.icon + " " + def.name + '</strong><small>' + benefit + '</small><span>Lv ' + level + "/" + def.max + " · " + (level >= def.max ? "MAXED" : formatNumber(cost) + " " + ZONES[stage].label) + '</span>' + purchaseProgressMarkup(game[ZONES[stage].currency], cost, level >= def.max) + '</button>';
         }).join("") + "</div></section>";
 }
 function renderProgressionZone(stage) {
@@ -184,7 +194,7 @@ function renderProgressionZone(stage) {
         activity = '<div class="search-sites">' + ["🌳 Overgrown Camp", "🚃 Rusted Train", "🏚️ Storage Shed"].map((name, i) => '<button data-action="search" data-choice="' + i + '" ' + (remaining ? "disabled" : "") + '>' + name + '<small>' + (remaining ? "Crew returns in " + remaining + "s" : "Searches " + a.siteSearches[i] + "/" + (i === 2 ? 8 : 14) + " · +" + formatNumber(searchReward(i)) + " Scrap") + '</small></button>').join("") + '</div><p class="activity-tip">Find one key after 8 searches at each site, then another at 14 Camp/Train searches. Invest in your crew and save 500 Scrap to open the gate.</p>';
     } else {
         const recipe = engineRecipe(), job = p.production, remaining = job ? Math.max(0, Math.ceil((job.readyAt - Date.now()) / 1000)) : 0;
-        activity = '<p class="recipe-label">Order ' + (a.deliveries + 1) + ' · ' + recipe.name + '</p><div class="assembly-slots">' + recipe.pieces.map((name, i) => '<span class="' + (a.assembly[i] === name ? "filled" : "") + '">' + (a.assembly[i] === name ? "✓ " : "") + name + '</span>').join("") + '</div><div class="activity-buttons">' + ["Gear", "Spring", "Plate"].map(name => '<button data-action="component" data-choice="' + name + '" ' + (job ? "disabled" : "") + '>' + name + '</button>').join("") + '<button data-action="assemble" ' + (job || a.assembly.length !== 3 || game.parts < engineCost() ? "disabled" : "") + '>Process · ' + engineCost() + ' Parts</button>' + (job ? '<button data-action="deliver" ' + (remaining ? "disabled" : "") + '>' + (remaining ? "Processing · " + remaining + "s" : "Deliver · +" + formatNumber(job.reward) + " Parts") + '</button>' : "") + '</div>' + (job ? '<div class="production-track"><div style="width:' + Math.min(100, (Date.now() - job.startedAt) / (job.readyAt - job.startedAt) * 100) + '%"></div></div>' : "") + '<p class="activity-tip">Recipes change every 6 deliveries. Processing takes ' + engineDuration() / 1000 + 's. Cooling and precision tools improve your production loop.</p>';
+        activity = '<p class="recipe-label">Order ' + (a.deliveries + 1) + ' · ' + recipe.name + '</p><div class="assembly-slots">' + recipe.pieces.map((name, i) => '<span class="' + (a.assembly[i] === name ? "filled" : "") + '">' + (a.assembly[i] === name ? "✓ " : "") + name + '</span>').join("") + '</div><div class="activity-buttons">' + ["Gear", "Spring", "Plate"].map(name => '<button data-action="component" data-choice="' + name + '" ' + (job ? "disabled" : "") + '>' + name + '</button>').join("") + '<button data-action="assemble" ' + (job || a.assembly.length !== 3 || game.parts < engineCost() ? "disabled" : "") + '>Process · ' + engineCost() + ' Parts</button>' + (job ? '<button data-action="deliver" ' + (remaining ? "disabled" : "") + '>' + (remaining ? "Processing · " + remaining + "s" : "Deliver · +" + formatNumber(job.reward) + " Parts") + '</button>' : "") + '</div>' + (job ? '<div class="production-track"><div style="width:' + Math.min(100, (Date.now() - job.startedAt) / (job.readyAt - job.startedAt) * 100) + '%"></div></div>' : "") + '<p class="activity-tip">Recipes change every 6 deliveries. Processing takes ' + engineDuration() / 1000 + 's. Buy Forge Tools for larger profits and faster jobs, or Auto Assembly to automate the loop.</p>';
     }
     const completed = isZoneUnlocked(stage + 1);
     const markup = '<article class="zone-scene zone-' + stage + '"><div class="zone-scenery" aria-hidden="true"><span>' + zone.icon + '</span><i></i><i></i><i></i></div><div class="zone-content"><p class="eyebrow">ZONE ' + stage + '</p><h2>' + zone.name + '</h2><p class="zone-lore">' + zone.lore + '</p><div class="zone-quest"><strong>' + (completed ? "✓ Zone objective complete" : zone.quest) + '</strong><span>' + objective.detail + '</span></div>' + activity + '<button class="zone-unlock" data-action="unlock" ' + (completed || !objective.ready ? "disabled" : "") + '>' + (completed ? "✓ " + zone.next + " unlocked" : "Open " + zone.next) + '</button></div></article>' + infrastructureMarkup(stage);
@@ -195,12 +205,13 @@ function renderCollectionZone() {
     if (!mount) return;
     // Create the field once. HUD updates must never destroy or reposition pickups.
     if (mount.dataset.fieldMounted !== "yes") {
-        mount.innerHTML = '<article class="zone-scene zone-4 collection-zone"><div class="collection-header"><div><p class="eyebrow">ZONE 4 · NEON ENERGY FIELD</p><h2>Harvest the signal.</h2><p class="zone-lore">Energy pulses gather between the relay towers. Tap or click them to collect Circuits.</p></div><div class="field-wallet"><span>CIRCUITS</span><strong id="fieldBalance">0</strong></div></div><div class="field-objective" id="fieldObjective"></div><div id="collectionField" class="collection-field" role="group" aria-label="Collect energy pickups"><div class="field-grid" aria-hidden="true"></div><span class="field-landmark landmark-one" aria-hidden="true">📡</span><span class="field-landmark landmark-two" aria-hidden="true">🏙️</span></div><div class="field-toolbar"><p>Blue energy: 5 Circuits · Gold energy: 15 · Your collectors and companions multiply rewards.</p><button id="towerButton" class="zone-unlock" data-action="tower"></button><button id="fieldUnlock" class="zone-unlock" data-action="unlock">Open Celestial Citadel</button></div><div id="fieldWorkshop"></div></article>';
+        mount.innerHTML = '<article class="zone-scene zone-4 collection-zone"><div class="collection-header"><div><p class="eyebrow">ZONE 4 · NEON ENERGY FIELD</p><h2>Harvest the signal.</h2><p class="zone-lore">Energy pulses gather between the relay towers. Tap or click them to collect Circuits.</p></div><div class="field-wallet"><span>CIRCUITS</span><strong id="fieldBalance">0</strong></div></div><div class="field-objective" id="fieldObjective"></div><div id="collectionField" class="collection-field" role="group" aria-label="Collect energy pickups"><div class="field-grid" aria-hidden="true"></div><span class="field-landmark landmark-one" aria-hidden="true">📡</span><span class="field-landmark landmark-two" aria-hidden="true">🏙️</span></div><div class="field-toolbar"><p id="fieldRewardHint"></p><button id="towerButton" class="zone-unlock" data-action="tower"></button><button id="fieldUnlock" class="zone-unlock" data-action="unlock">Open Celestial Citadel</button></div><div id="fieldWorkshop"></div></article>';
         mount.dataset.fieldMounted = "yes";
     }
     const p = game.adventure.progression;
     const balance = el("fieldBalance"), objective = el("fieldObjective"), tower = el("towerButton"), gate = el("fieldUnlock"), workshop = el("fieldWorkshop");
     if (balance) balance.textContent = formatNumber(game.circuits);
+    if (el('fieldRewardHint')) el('fieldRewardHint').textContent = 'Blue energy: ' + formatNumber(fieldReward(false)) + ' Circuits · Gold energy: ' + formatNumber(fieldReward(true)) + ' · Includes your tools, glyphs and companions.';
     if (objective) objective.textContent = progressionObjective(4).detail;
     if (tower) {
         const cost = [150, 450, 900][p.relayTowers], count = [20, 45, 80][p.relayTowers];

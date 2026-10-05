@@ -2,15 +2,24 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Last City | CTRL + ALT + DEFEAT</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="cyberpunk.css">
-    <link rel="stylesheet" href="effects.css">
-    <link rel="stylesheet" href="world.css">
-    <link rel="stylesheet" href="cloud-save.css?v=google-1">
+    <link rel="stylesheet" href="src/styles/style.css">
+    <link rel="stylesheet" href="src/styles/cyberpunk.css">
+    <link rel="stylesheet" href="src/styles/effects.css">
+    <link rel="stylesheet" href="src/styles/world.css">
+    <link rel="stylesheet" href="src/styles/cloud-save.css?v=google-1">
+    <link rel="stylesheet" href="src/styles/player-ui.css">
+    <link rel="stylesheet" href="src/styles/startup.css">
 </head>
 <body>
+
+<section class="wallet-bar" aria-label="Current zone wallet">
+    <div class="wallet-primary"><span id="walletLabel">SALVAGE</span><strong id="walletBalance">0</strong><small id="walletRate">+0 / sec</small></div>
+    <div class="wallet-secondary"><span id="walletTokenLabel">SHARDS</span><strong id="walletTokens">0</strong></div>
+    <button id="walletGlyphButton" class="wallet-luck" title="View glyph collection and Luck upgrades"><span>✧ LUCK</span><strong id="walletLuck">×1.00</strong></button>
+    <button id="walletUpgradeButton" class="wallet-shop" aria-label="Open upgrades">↗ <span>Upgrades</span></button>
+</section>
 
 <header class="top-header">
     <div class="logo-section">
@@ -25,6 +34,7 @@
             <summary>⚙ Settings</summary>
             <div class="settings-menu"><p class="eyebrow">PLAYER PREFERENCES</p>
                 <button id="soundButton" class="secondary-button" aria-pressed="true">🔊 Sound</button>
+                <button id="ambientButton" class="secondary-button" aria-pressed="false">♫ Ambient off</button>
                 <button id="effectsButton" class="secondary-button" aria-pressed="true">✦ Effects on</button>
                 <p>Preferences save with your city. Device reduced-motion settings take priority.</p>
                 <button id="resetButton" class="danger-button">↻ Reset all progress</button>
@@ -44,11 +54,12 @@
     </nav>
 
     <nav class="game-mode-tabs" aria-label="Game sections">
-        <button class="game-mode-tab active" data-mode="city" aria-pressed="true">⌂ Play & Build</button>
-        <button class="game-mode-tab" data-mode="upgrades">✦ Upgrades <span id="upgradeReadyCount" class="ready-badge" hidden>0</span></button>
-        <button class="game-mode-tab" data-mode="stats">▦ Statistics</button>
-        <button class="game-mode-tab" data-mode="companions">🥚 Companions</button>
-        <button class="game-mode-tab" data-mode="stories">▤ Story Archive <span id="storyUnreadCount" class="ready-badge" hidden>0</span></button>
+        <button class="game-mode-tab active" data-mode="city" aria-pressed="true"><span class="nav-icon" aria-hidden="true">⌂</span><span>Play</span></button>
+        <button class="game-mode-tab" data-mode="upgrades"><span class="nav-icon" aria-hidden="true">↗</span><span>Upgrades</span><span id="upgradeReadyCount" class="ready-badge" hidden>0</span></button>
+        <button class="game-mode-tab" data-mode="glyphs"><span class="nav-icon" aria-hidden="true">✧</span><span>Glyphs</span></button>
+        <button class="game-mode-tab" data-mode="companions"><span class="nav-icon" aria-hidden="true">♧</span><span>Pets</span></button>
+        <button class="game-mode-tab" data-mode="stories"><span class="nav-icon" aria-hidden="true">▤</span><span>Stories</span><span id="storyUnreadCount" class="ready-badge" hidden>0</span></button>
+        <button class="game-mode-tab" data-mode="stats"><span class="nav-icon" aria-hidden="true">▦</span><span>Stats</span></button>
     </nav>
 
     <section class="world-banner" aria-labelledby="worldZoneName">
@@ -75,6 +86,7 @@
     <aside id="storyNotice" class="story-notice" hidden><div><p class="eyebrow">CITY ARCHIVES</p><strong id="storyNoticeTitle" role="status" aria-live="polite">A new story awaits</strong></div><button id="readLatestStory" class="secondary-button">Read transmission</button></aside>
     <section id="storyPanel" class="story-panel" aria-label="Unlocked city stories"></section>
     <section id="companionPanel" class="companion-panel" aria-label="Eggs and companions"></section>
+    <section id="glyphPanel" class="glyph-panel" aria-label="Glyph collection and Luck upgrades"></section>
 
     <!-- STAGE 1 -->
     <section id="stage1Panel" class="stage-panel active">
@@ -181,7 +193,7 @@
                 <div class="building-card">
                     <div class="building-top">
                         <div class="building-icon solar-icon">🏕️</div>
-                        <div><h3>Scavenger Camp</h3><p>+0.2 Salvage/sec</p></div>
+                        <div><h3>Scavenger Camp</h3><p>+0.5 base Salvage/sec · starter income</p></div>
                     </div>
                     <div class="building-stats">
                         <span>Owned <strong id="scavengerOwned">0</strong></span>
@@ -190,88 +202,55 @@
                     <button id="buyScavenger" class="buy-button">Build <span><span id="scavengerCost2">15</span> ⚙️</span></button>
                 </div>
 
-                <div class="building-card">
-                    <div class="building-top">
-                        <div class="building-icon farm-icon">🏚️</div>
-                        <div><h3>Salvage Yard</h3><p>+1.5 Salvage/sec</p></div>
-                    </div>
-                    <div class="building-stats">
-                        <span>Owned <strong id="yardOwned">0</strong></span>
-                        <span>Cost <strong><span id="yardCost">120</span> ⚙️</strong></span>
-                    </div>
-                    <button id="buyYard" class="buy-button">Build <span><span id="yardCost2">120</span> ⚙️</span></button>
-                </div>
 
                 <div class="building-card">
                     <div class="building-top">
                         <div class="building-icon shelter-icon">🏠</div>
-                        <div><h3>Shelter</h3><p>+1 Population</p></div>
+                        <div><h3>Crew Shelter</h3><p>+3 Population · stronger gathering and workforce</p></div>
                     </div>
                     <div class="building-stats">
                         <span>Owned <strong id="shelterOwned">0</strong></span>
-                        <span>Cost <strong><span id="shelterCost">700</span> ⚙️</strong></span>
+                        <span>Cost <strong><span id="shelterCost">150</span> ⚙️</strong></span>
                     </div>
-                    <button id="buyShelter" class="buy-button">Build <span><span id="shelterCost2">700</span> ⚙️</span></button>
+                    <button id="buyShelter" class="buy-button">Build <span><span id="shelterCost2">150</span> ⚙️</span></button>
                 </div>
 
                 <div class="building-card">
                     <div class="building-top">
                         <div class="building-icon lab-icon">🔧</div>
-                        <div><h3>Workshop</h3><p>+12 Salvage/sec</p></div>
+                        <div><h3>Workshop</h3><p>+8 base Salvage/sec · production engine</p></div>
                     </div>
                     <div class="building-stats">
                         <span>Owned <strong id="workshopOwned">0</strong></span>
-                        <span>Cost <strong><span id="workshopCost">3,500</span> ⚙️</strong></span>
+                        <span>Cost <strong><span id="workshopCost">900</span> ⚙️</strong></span>
                     </div>
-                    <button id="buyWorkshop" class="buy-button">Build <span><span id="workshopCost2">3,500</span> ⚙️</span></button>
+                    <button id="buyWorkshop" class="buy-button">Build <span><span id="workshopCost2">900</span> ⚙️</span></button>
                 </div>
 
-                <div class="building-card">
-                    <div class="building-top">
-                        <div class="building-icon farm-icon">🌾</div>
-                        <div><h3>Hydro Farm</h3><p>+25 Salvage/sec, +2 Pop</p></div>
-                    </div>
-                    <div class="building-stats">
-                        <span>Owned <strong id="farmOwned">0</strong></span>
-                        <span>Cost <strong><span id="farmCost">18,000</span> ⚙️</strong></span>
-                    </div>
-                    <button id="buyFarm" class="buy-button">Build <span><span id="farmCost2">18,000</span> ⚙️</span></button>
-                </div>
 
                 <div class="building-card">
                     <div class="building-top">
                         <div class="building-icon solar-icon">⚡</div>
-                        <div><h3>Power Plant</h3><p>×1.18 all Salvage/sec</p></div>
+                        <div><h3>Power Plant</h3><p>×1.2 building output per plant</p></div>
                     </div>
                     <div class="building-stats">
                         <span>Owned <strong id="powerOwned">0</strong></span>
-                        <span>Cost <strong><span id="powerCost">90,000</span> ⚙️</strong></span>
+                        <span>Cost <strong><span id="powerCost">4,500</span> ⚙️</strong></span>
                     </div>
-                    <button id="buyPower" class="buy-button">Build <span><span id="powerCost2">90,000</span> ⚙️</span></button>
+                    <button id="buyPower" class="buy-button">Build <span><span id="powerCost2">4,500</span> ⚙️</span></button>
                 </div>
 
-                <div class="building-card">
-                    <div class="building-top">
-                        <div class="building-icon lab-icon">🏭</div>
-                        <div><h3>Factory</h3><p>+180 Salvage/sec</p></div>
-                    </div>
-                    <div class="building-stats">
-                        <span>Owned <strong id="factoryOwned">0</strong></span>
-                        <span>Cost <strong><span id="factoryCost">500,000</span> ⚙️</strong></span>
-                    </div>
-                    <button id="buyFactory" class="buy-button">Build <span><span id="factoryCost2">500,000</span> ⚙️</span></button>
-                </div>
 
                 <div class="building-card">
                     <div class="building-top">
                         <div class="building-icon shelter-icon">🏙️</div>
-                        <div><h3>City Center</h3><p>+1,200 Salvage/sec, +15 Pop</p></div>
+                        <div><h3>City Center</h3><p>+80 base Salvage/sec, +15 Population · build 4 to renew</p></div>
                     </div>
                     <div class="building-stats">
                         <span>Owned <strong id="citycenterOwned">0</strong></span>
-                        <span>Cost <strong><span id="citycenterCost">3,000,000</span> ⚙️</strong></span>
+                        <span>Cost <strong><span id="citycenterCost">100,000</span> ⚙️</strong></span>
                     </div>
-                    <button id="buyCitycenter" class="buy-button">Build <span><span id="citycenterCost2">3,000,000</span> ⚙️</span></button>
+                    <button id="buyCitycenter" class="buy-button">Build <span><span id="citycenterCost2">100,000</span> ⚙️</span></button>
                 </div>
             </aside>
         </section>
@@ -300,7 +279,7 @@
             <div class="panel-heading">
                 <div>
                     <p class="eyebrow">SALVAGE LAB</p>
-                    <h2>Field Tech (Salvage ⚙️)</h2>
+                    <h2>Core Upgrades (Salvage ⚙️)</h2>
                 </div>
                 <span class="lab-caption">Small upgrades for every run</span>
             </div>
@@ -448,6 +427,7 @@
         </aside>
     </section>
 
+<section id="preservationPanel" class="preservation-panel" aria-label="Permanent upgrade preservation"></section>
 <section id="statsPanel" class="stats-panel">
     <div class="stats-hero">
         <div><p class="eyebrow">CITY ARCHIVES</p><h2>Your Rebuilding Record</h2><p>Every run, click, and milestone is recorded here.</p></div>
@@ -458,6 +438,7 @@
         <article class="stat-group"><h3>⚙️ City Economy</h3><div class="stat-lines"><div><span>Lifetime Salvage earned</span><strong id="statLifetimeSalvage">0</strong></div><div><span>Best Salvage/sec</span><strong id="statBestRate">0</strong></div><div><span>Buildings constructed</span><strong id="statBuildingsBuilt">0</strong></div><div><span>Highest momentum</span><strong id="statHighestCombo">0x</strong></div></div></article>
         <article class="stat-group"><h3>📡 City Operations</h3><div class="stat-lines"><div><span>Supply Drops secured</span><strong id="statSupplyDrops">0</strong></div><div><span>Contracts completed</span><strong id="statContracts">0</strong></div><div><span>Badges earned</span><strong id="statBadges">0 / 5</strong></div><div><span>Current population</span><strong id="statPopulation">0</strong></div></div></article>
         <article class="stat-group"><h3>🌅 Legacy</h3><div class="stat-lines"><div><span>Rebirths</span><strong id="statRebirths">0</strong></div><div><span>Settlement resets</span><strong id="statStage2Resets">0</strong></div><div><span>Stages unlocked</span><strong id="statStagesUnlocked">1 / 5</strong></div><div><span>Salvage Shards</span><strong id="statShards">0</strong></div></div></article>
+        <article class="stat-group"><h3>✧ Permanent glyphs</h3><div class="stat-lines"><div><span>Glyph batches rolled</span><strong id="statGlyphRolls">0</strong></div><div><span>Unique glyphs discovered</span><strong id="statGlyphUnique">0 / 60</strong></div><div><span>Glyph copies collected</span><strong id="statGlyphCollected">0</strong></div><div><span>Glyphs at collection cap</span><strong id="statGlyphMaxed">0 / 60</strong></div><div><span>Global Luck</span><strong id="statGlyphLuck">×1.00</strong></div><div><span>Current zone glyph power</span><strong id="statGlyphPower">×1.00</strong></div><div><span>Preservation blueprints</span><strong id="statPreservation">0 / 6</strong></div></div></article>
     </div>
 </section>
 
@@ -470,16 +451,71 @@
 
 <div id="notification" class="notification">Game Saved</div>
 <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
-<div id="introModal" class="intro-modal" role="dialog" aria-modal="true" aria-labelledby="introTitle" hidden>
-    <div class="intro-card">
-        <span class="intro-symbol">🌆</span>
-        <p class="eyebrow">YEAR 2189 · THE LAST CITY</p>
-        <h2 id="introTitle">Welcome, Builder.</h2>
-        <p>The old world is silent, but a single district still has power. Gather what remains, shelter the survivors, and turn a campfire into humanity’s last city.</p>
-        <div class="intro-steps"><span>1. Rebuild the outpost</span><span>2. Hatch companions</span><span>3. Complete zone quests</span></div>
-        <button id="introStartButton" class="intro-start-button">BEGIN THE REBUILD</button>
+<button id="mobileGather" class="mobile-gather" hidden>⚙ Gather <span id="mobileGatherPower">+1</span></button>
+<dialog id="introModal" class="intro-modal start-screen" aria-labelledby="introTitle" aria-describedby="startDescription" hidden>
+    <div class="intro-card start-card">
+        <div class="start-landscape" aria-hidden="true"></div><div class="start-atmosphere" aria-hidden="true"></div>
+        <header class="start-brand"><p><span aria-hidden="true">🌆</span> CTRL + ALT + DEFEAT</p><span class="start-preview-badge">DEVELOPMENT PREVIEW</span></header>
+        <div class="start-main">
+            <section class="start-copy">
+                <p class="start-kicker">YEAR 2189 · ONE LIGHT REMAINS</p>
+                <h1 id="introTitle">Last <span>City</span></h1>
+                <p class="start-tagline">Rebuild Civilization One Click at a Time</p>
+                <p id="startDescription">From one campfire to a living skyline.<br>Build, discover, and bring the city back to life.</p>
+                <div class="start-save-summary"><span class="start-save-dot" aria-hidden="true"></span><div><strong id="startProgress">New Game</strong><span id="startSaveHint">Your progress saves on this device.</span></div></div>
+                <button id="introStartButton" class="intro-start-button" autofocus><span aria-hidden="true">▶</span> PLAY <span class="start-play-arrow" aria-hidden="true">↗</span></button>
+                <nav class="start-secondary" aria-label="Startup options">
+                    <button id="startContinueButton" hidden>Continue saved city</button>
+                    <button id="startSettingsButton" aria-expanded="false" aria-controls="startSettingsPanel">⚙ Settings</button>
+                    <button id="startCreditsButton" aria-expanded="false" aria-controls="startCreditsPanel">Credits / About</button>
+                </nav>
+                <p class="start-footnote">Play resumes your saved city. No account required.</p>
+                <section id="startSettingsPanel" class="start-inline-panel" aria-labelledby="startSettingsTitle" hidden>
+                    <div class="start-panel-heading"><h2 id="startSettingsTitle">Player settings</h2><button data-start-close="startSettingsPanel" aria-label="Close settings">×</button></div>
+                    <div class="start-setting-buttons"><button id="startSoundButton" aria-pressed="true">🔊 Sound on</button><button id="startAmbientButton" aria-pressed="false">♫ Ambient off</button><button id="startEffectsButton" aria-pressed="true">✦ Effects on</button></div>
+                    <p id="startAudioHint">Ambient is optional. Audio begins only after you interact.</p>
+                    <p>Reduced-motion preferences are respected. Reset is permanent and requires confirmation.</p>
+                    <button id="startResetButton" class="start-danger">Reset all progress</button>
+                </section>
+                <section id="startCreditsPanel" class="start-inline-panel" aria-labelledby="startCreditsTitle" hidden>
+                    <div class="start-panel-heading"><h2 id="startCreditsTitle">About Last City</h2><button data-start-close="startCreditsPanel" aria-label="Close credits">×</button></div>
+                    <p>Created by <strong>CTRL + ALT + DEFEAT</strong> · IT 485 Capstone Project.</p>
+                    <p>Five districts. Permanent glyph discoveries. A civilization rebuilt through the small things you choose to keep.</p>
+                    <p>Zone illustrations and pet portraits are AI-generated project assets. Ambient tones are synthesized in the browser; no music download or external audio service is used.</p>
+                    <p>Development preview. Player pacing and live-account checks are still in progress.</p>
+                </section>
+            </section>
+            <div class="start-world-caption" aria-hidden="true"><span class="start-caption-line"></span><small>ASHFALL OUTPOST</small><p>The beacon is still burning.</p></div>
+        </div>
+        <div class="start-extras">
+            <aside class="start-daily" aria-labelledby="dailyRewardTitle"><span class="start-crate" aria-hidden="true">📦</span><div><p class="start-kicker" id="dailyRewardTitle">DAILY SUPPLY CRATE</p><strong id="dailyRewardAmount">250 Salvage</strong><small id="dailyRewardStatus" role="status" aria-live="polite">Optional · no streak to maintain · resets 00:00 UTC</small></div><button id="dailyRewardButton">Claim crate</button></aside>
+            <aside class="start-news" aria-label="News and patch notes"><p class="start-kicker">CITY TRANSMISSIONS</p><div class="news-ticker"><div class="news-ticker-track"><span>NEW · Growth phases that matter. Permanent glyphs. A restored skyline.</span><span aria-hidden="true">NEW · Growth phases that matter. Permanent glyphs. A restored skyline.</span></div></div><details><summary>Read patch notes ↗</summary><ul><li>Restored artwork in all five zone themes.</li><li>New start page, opt-in ambient audio and daily supplies.</li><li>Flat → additive → compounding upgrades with fixed prices.</li><li>Existing saves, glyph buffs and earned blueprints are retained.</li></ul></details></aside>
+        </div>
+        <footer class="start-footer"><span id="startBuildInfo">v1.0.0-dev · Build 2026.10.05 · Local review</span><span>ONE CITY. ANOTHER CHANCE.</span></footer>
     </div>
-</div>
+</dialog>
+
+<dialog id="loreModal" class="lore-modal" aria-labelledby="loreTitle">
+    <div class="lore-popup-shell">
+        <header class="lore-popup-header">
+            <p id="loreChapter" class="eyebrow">RECOVERED TRANSMISSION</p>
+            <button id="loreCloseIcon" class="lore-close-icon" aria-label="Close story">×</button>
+        </header>
+        <div id="loreArtwork" class="story-art" role="img"></div>
+        <div class="lore-popup-copy">
+            <p id="loreSpeaker" class="eyebrow"></p>
+            <h2 id="loreTitle"></h2>
+            <div id="loreText"></div>
+        </div>
+        <footer class="lore-popup-footer">
+            <p id="loreArchiveHint">Saved in Stories. Close any time to keep playing.</p>
+            <div>
+                <button id="loreViewArchive" class="secondary-button">View Stories</button>
+                <button id="loreCloseButton" autofocus>Close &amp; keep playing</button>
+            </div>
+        </footer>
+    </div>
+</dialog>
 
 <dialog id="hatchModal" class="hatch-modal" aria-labelledby="hatchTitle" aria-describedby="hatchStatus">
     <div class="hatch-card">
@@ -565,13 +601,17 @@
     </div>
 </dialog>
 
-<script src="cloud-config.js?v=google-1"></script>
-<script src="progression.js"></script>
-<script src="adventure.js"></script>
-<script src="pets.js"></script>
-<script src="effects.js"></script>
-<script src="world.js"></script>
-<script src="game.js"></script>
-    <script src="cloud-save.js?v=account-recovery-1"></script>
+<script src="src/cloud/cloud-config.js?v=google-1"></script>
+<script src="src/game/progression.js"></script>
+<script src="src/game/adventure.js"></script>
+<script src="src/game/pets.js"></script>
+<script src="src/ui/effects.js"></script>
+<script src="src/ui/world.js"></script>
+<script src="src/game/glyphs.js"></script>
+<script src="src/ui/player-ui.js"></script>
+<script src="src/ui/startup.js"></script>
+<script src="src/game/economy.js"></script>
+<script src="src/game/game.js"></script>
+    <script src="src/cloud/cloud-save.js?v=account-recovery-1"></script>
 </body>
 </html>
