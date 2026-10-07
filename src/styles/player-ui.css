@@ -230,3 +230,15 @@ body.upgrades-open .preservation-panel { display: block; }
     .preservation-card { padding: 16px; }
 }
 @media (prefers-reduced-motion: reduce) { .glyph-panel button, .preservation-card button { transition: none; } }
+.wallet-primary > .feedback-boost { grid-column: 1 / -1; grid-row: 3; color: #ffcf83; font-size: 10px; }
+.feedback-boost[hidden] { display: none; }
+.settings-menu { max-height: calc(100dvh - 170px); overflow-y: auto; overscroll-behavior: contain; }
+.feedback-modal { width: min(600px, calc(100vw - 28px)); }
+.feedback-modal > p { color: #d2e5f5; line-height: 1.6; }
+.feedback-modal textarea, .feedback-modal select { width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid #557492; border-radius: 8px; background: #07111b; color: #eef6ff; font: inherit; font-size: 14px; }
+.feedback-modal textarea { resize: vertical; min-height: 120px; max-height: 40dvh; }
+.feedback-modal textarea:focus-visible, .feedback-modal select:focus-visible { outline: 2px solid #80e4ef; outline-offset: 3px; }
+.feedback-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+#feedbackMessage { line-height: 1.6; color: #ffcf83; overflow-wrap: anywhere; }
+.feedback-modal button { min-height: 44px; }
+@media (max-width: 500px) { .feedback-fields { grid-template-columns: 1fr; gap: 0; } .feedback-modal { padding: 18px; } }

@@ -11,6 +11,7 @@ function renderPlayerUI() {
     if (!gameStarted) renderStartupPage();
     else renderStartupSettings();
     syncAmbientAudio();
+    renderFeedbackStatus();
 }
 function scrollPlayerSection() {
     const panel = el(currentGameMode === "city" || currentGameMode === "upgrades" ? "stage" + currentStageView + "Panel" : currentGameMode === "companions" ? "companionPanel" : currentGameMode === "glyphs" ? "glyphPanel" : currentGameMode === "stories" ? "storyPanel" : "statsPanel");
@@ -25,6 +26,7 @@ function initPlayerUI() {
     });
     el("introModal")?.addEventListener("cancel", event => event.preventDefault());
     initStartupUI();
+    initFeedbackUI();
     initPreservationUI();
     renderPlayerUI();
 }

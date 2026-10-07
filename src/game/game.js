@@ -35,6 +35,7 @@ const defaultGame = {
     ambientEnabled: false,
     effectsEnabled: true,
     dailyReward: normalizeDailyReward(),
+    feedback: normalizeFeedback(),
     lastStageView: 1,
     story: normalizeStory(),
     glyphs: normalizeGlyphs(),
@@ -387,7 +388,7 @@ function getSalvageMultiplier(driveLevel = game.cityTech.salvageAccelerator) {
     if (game.rebirthUpgrades.legacy) mult *= 2;
     if (game.stage5Upgrades.ascension) mult *= 2;
     if (game.stage5ResetUpgrades.lastCity) mult *= 10;
-    return mult;
+    return mult * feedbackResourceMultiplier();
 }
 
 function getPopulation() {
@@ -422,7 +423,8 @@ function getMomentumBonus() {
 }
 
 function getSupplyDropValue() {
-    return Math.max(40, getSalvagePerSecond() * 25) * (1 + game.cityTech.dropScanner * 0.25);
+    const boost = feedbackResourceMultiplier();
+    return Math.max(40, getSalvagePerSecond() / boost * 25) * (1 + game.cityTech.dropScanner * 0.25) * boost;
 }
 
 function getTechCost(def, level) { return economyUpgradeCost(def, level); }
@@ -434,7 +436,7 @@ function getScrapPerSecond(driveLevel = game.stage2Upgrades.scrapRate) {
     if (game.stage2ResetUpgrades.settlementLegacy) base *= 2;
     if (game.stage5Upgrades.ascension) base *= 2;
     if (game.stage5ResetUpgrades.lastCity) base *= 10;
-    return base * (1 + getPopulationResourceBonus()) * getCompanionMultiplier(2) * getGlyphMultiplier(2);
+    return base * (1 + getPopulationResourceBonus()) * getCompanionMultiplier(2) * getGlyphMultiplier(2) * feedbackResourceMultiplier();
 }
 
 function getPartsPerSecond(driveLevel = game.stage3Upgrades.partRate) {
@@ -444,7 +446,7 @@ function getPartsPerSecond(driveLevel = game.stage3Upgrades.partRate) {
     if (game.stage3ResetUpgrades.industryLegacy) base *= 2;
     if (game.stage5Upgrades.ascension) base *= 2;
     if (game.stage5ResetUpgrades.lastCity) base *= 10;
-    return base * (1 + getPopulationResourceBonus()) * getCompanionMultiplier(3) * getGlyphMultiplier(3);
+    return base * (1 + getPopulationResourceBonus()) * getCompanionMultiplier(3) * getGlyphMultiplier(3) * feedbackResourceMultiplier();
 }
 
 function getCircuitsPerSecond(driveLevel = game.stage4Upgrades.circuitRate) {
@@ -453,7 +455,7 @@ function getCircuitsPerSecond(driveLevel = game.stage4Upgrades.circuitRate) {
     if (game.stage4ResetUpgrades.networkLegacy) base *= 2;
     if (game.stage5Upgrades.ascension) base *= 2;
     if (game.stage5ResetUpgrades.lastCity) base *= 10;
-    return base * (1 + getPopulationResourceBonus()) * getCompanionMultiplier(4) * getGlyphMultiplier(4);
+    return base * (1 + getPopulationResourceBonus()) * getCompanionMultiplier(4) * getGlyphMultiplier(4) * feedbackResourceMultiplier();
 }
 
 function getCoresPerSecond(driveLevel = game.stage5Upgrades.coreRate) {
@@ -463,7 +465,7 @@ function getCoresPerSecond(driveLevel = game.stage5Upgrades.coreRate) {
     if (game.adventure.bossDefeated) base *= 2;
     if (game.stage5Upgrades.ascension) base *= 2;
     if (game.stage5ResetUpgrades.lastCity) base *= 10;
-    return base * (1 + getPopulationResourceBonus()) * getCompanionMultiplier(5) * getGlyphMultiplier(5);
+    return base * (1 + getPopulationResourceBonus()) * getCompanionMultiplier(5) * getGlyphMultiplier(5) * feedbackResourceMultiplier();
 }
 
 // =============================================
@@ -968,6 +970,7 @@ function gameLoop() {
         showNotification(getRebirthRequirement().check() ? "🌅 CITY RENEWAL READY — Rebirth available!" : "City built! Complete the displayed renewal milestone and funding requirement.");
     }
 
+    tickFeedback();
     updateGame();
 }
 
@@ -1445,6 +1448,7 @@ function saveGame(showMsg = true) {
 }
 
 function loadGame(snapshot) {
+    clearFeedbackSession();
     startupSaveAvailable = false;
     dailyClaimError = '';
     clearLorePopupSession();
@@ -1468,6 +1472,7 @@ function loadGame(snapshot) {
             ...loaded,
             ambientEnabled: loaded.ambientEnabled === true,
             dailyReward: normalizeDailyReward(loaded.dailyReward),
+            feedback: normalizeFeedback(loaded.feedback),
             lastStageView: Number.isInteger(loaded.lastStageView) && loaded.lastStageView >= 1 && loaded.lastStageView <= 5
                 ? loaded.lastStageView : [5,4,3,2,1].find(stage => stage === 1 || loaded['stage' + stage + 'Unlocked']),
             story: normalizeStory(loaded.story),
@@ -1491,7 +1496,8 @@ function loadGame(snapshot) {
             stage5ResetUpgrades: { ...defaultGame.stage5ResetUpgrades, ...(loaded.stage5ResetUpgrades || {}) }
         };
         startupSaveAvailable = true;
-        applyOfflineProgress();
+        feedbackOfflineCalculation = true;
+        try { applyOfflineProgress(); } finally { feedbackOfflineCalculation = false; }
     } catch (e) {
         console.error(e);
         game = JSON.parse(JSON.stringify(defaultGame));
@@ -1506,6 +1512,7 @@ saveButton.addEventListener("click", () => saveGame(true));
 function resetAllProgress() {
     if (window.LastCityCloud?.isSwitching?.()) return;
     if (!confirm("Reset EVERYTHING? This cannot be undone.")) return;
+    clearFeedbackSession();
     clearLorePopupSession();
     if (glyphAuto) stopGlyphAuto("Auto-roll stopped by full reset.");
     glyphManualReadyAt = 0;

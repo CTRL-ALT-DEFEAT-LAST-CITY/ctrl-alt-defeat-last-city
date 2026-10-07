@@ -104,7 +104,7 @@ function stageResetReward(stage) {
     return 3 + Math.floor(Math.max(0, level - 3) / 3);
 }
 function cannonCost() { return [100, 200, 400, 800][Math.min(3, Math.floor((100 - game.adventure.bossHealth) / 25))]; }
-function coreChannelReward(level = game.stage5Upgrades.reactorFocus) { return upgradeAmount('reactorFocus', 4, level) * getCompanionMultiplier(5) * getGlyphMultiplier(5) * stageResetMultiplier(5); }
+function coreChannelReward(level = game.stage5Upgrades.reactorFocus) { return upgradeAmount('reactorFocus', 4, level) * getCompanionMultiplier(5) * getGlyphMultiplier(5) * stageResetMultiplier(5) * feedbackResourceMultiplier(); }
 let lastSimulatorSearch = 0, lastCoreChannel = 0;
 function runSimulatorAutomation(now = Date.now()) {
     if (!gameStarted || document.hidden || window.LastCityCloud?.isSwitching?.() || el("accountModal")?.open) return;

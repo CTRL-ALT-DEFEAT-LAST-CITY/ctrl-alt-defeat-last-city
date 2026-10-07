@@ -82,3 +82,7 @@ dialog.start-screen { inset: 0; width: 100%; height: 100dvh; max-height: none; m
     .start-landscape { background-position: center, center, 67% center; }
 }
 @media (prefers-reduced-motion: reduce) { .start-landscape, .start-atmosphere, .news-ticker-track { animation: none; transform: none; } .news-ticker-track { width: auto; } .news-ticker-track span { padding-right: 0; white-space: normal; } .news-ticker-track span[aria-hidden="true"] { display: none; } }
+.start-account { margin-top: 14px; max-width: 460px; }
+.start-account button { min-height: 44px; padding: 10px 16px; background: #152436; border: 1px solid #678098; color: #dceeff; border-radius: 9px; cursor: pointer; font: inherit; font-size: 13px; }
+.start-account p { color: #aabed1; font-size: 12px; line-height: 1.6; margin: 9px 0; }
+.start-account button:focus-visible { outline: 2px solid #ffcf83; outline-offset: 3px; }

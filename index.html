@@ -15,7 +15,7 @@
 <body>
 
 <section class="wallet-bar" aria-label="Current zone wallet">
-    <div class="wallet-primary"><span id="walletLabel">SALVAGE</span><strong id="walletBalance">0</strong><small id="walletRate">+0 / sec</small></div>
+    <div class="wallet-primary"><span id="walletLabel">SALVAGE</span><strong id="walletBalance">0</strong><small id="walletRate">+0 / sec</small><small id="feedbackBoostBadge" class="feedback-boost" hidden></small></div>
     <div class="wallet-secondary"><span id="walletTokenLabel">SHARDS</span><strong id="walletTokens">0</strong></div>
     <button id="walletGlyphButton" class="wallet-luck" title="View glyph collection and Luck upgrades"><span>✧ LUCK</span><strong id="walletLuck">×1.00</strong></button>
     <button id="walletUpgradeButton" class="wallet-shop" aria-label="Open upgrades">↗ <span>Upgrades</span></button>
@@ -28,15 +28,20 @@
         <p class="tagline">Rebuild Civilization One Click at a Time</p>
     </div>
     <div class="header-buttons">
-        <button id="accountButton" class="secondary-button">☁ Account</button>
-        <button id="saveButton" class="secondary-button">💾 Save</button>
         <details id="playerSettings" class="player-settings">
             <summary>⚙ Settings</summary>
-            <div class="settings-menu"><p class="eyebrow">PLAYER PREFERENCES</p>
+            <div class="settings-menu"><p class="eyebrow">ACCOUNT &amp; SAVES</p>
+                <p id="settingsAccountStatus">Guest · progress saves on this device.</p>
+                <button id="settingsAccountButton" class="secondary-button">☁ Log in / Create account</button>
+                <button id="saveButton" class="secondary-button">💾 Save progress</button>
+                <button id="settingsCloudSyncButton" class="secondary-button">☁ Save to cloud / Log in</button>
+                <p class="eyebrow">PLAYER PREFERENCES</p>
                 <button id="soundButton" class="secondary-button" aria-pressed="true">🔊 Sound</button>
                 <button id="ambientButton" class="secondary-button" aria-pressed="false">♫ Ambient off</button>
                 <button id="effectsButton" class="secondary-button" aria-pressed="true">✦ Effects on</button>
                 <p>Preferences save with your city. Device reduced-motion settings take priority.</p>
+                <button id="settingsFeedbackButton" class="secondary-button">✉ Give feedback</button>
+                <p id="settingsFeedbackStatus">Share feedback for a one-time ×2 resource boost.</p>
                 <button id="resetButton" class="danger-button">↻ Reset all progress</button>
             </div>
         </details>
@@ -463,13 +468,15 @@
                 <p class="start-tagline">Rebuild Civilization One Click at a Time</p>
                 <p id="startDescription">From one campfire to a living skyline.<br>Build, discover, and bring the city back to life.</p>
                 <div class="start-save-summary"><span class="start-save-dot" aria-hidden="true"></span><div><strong id="startProgress">New Game</strong><span id="startSaveHint">Your progress saves on this device.</span></div></div>
-                <button id="introStartButton" class="intro-start-button" autofocus><span aria-hidden="true">▶</span> PLAY <span class="start-play-arrow" aria-hidden="true">↗</span></button>
+                <button id="introStartButton" class="intro-start-button" autofocus><span aria-hidden="true">▶</span> <span id="startPlayLabel">PLAY AS GUEST</span> <span class="start-play-arrow" aria-hidden="true">↗</span></button>
+                <div class="start-account"><button id="accountButton">☁ Create account / Log in</button><p id="startAccountHint">Guest play saves on this device. Create an account to keep your city in the cloud.</p></div>
                 <nav class="start-secondary" aria-label="Startup options">
                     <button id="startContinueButton" hidden>Continue saved city</button>
                     <button id="startSettingsButton" aria-expanded="false" aria-controls="startSettingsPanel">⚙ Settings</button>
                     <button id="startCreditsButton" aria-expanded="false" aria-controls="startCreditsPanel">Credits / About</button>
+                    <button id="startFeedbackButton">✉ Feedback</button>
                 </nav>
-                <p class="start-footnote">Play resumes your saved city. No account required.</p>
+                <p class="start-footnote">No account required. You can log in later through Settings and import your guest city.</p>
                 <section id="startSettingsPanel" class="start-inline-panel" aria-labelledby="startSettingsTitle" hidden>
                     <div class="start-panel-heading"><h2 id="startSettingsTitle">Player settings</h2><button data-start-close="startSettingsPanel" aria-label="Close settings">×</button></div>
                     <div class="start-setting-buttons"><button id="startSoundButton" aria-pressed="true">🔊 Sound on</button><button id="startAmbientButton" aria-pressed="false">♫ Ambient off</button><button id="startEffectsButton" aria-pressed="true">✦ Effects on</button></div>
@@ -587,6 +594,7 @@
             <button id="cloudSyncButton" class="secondary-button">Sync now</button>
             <button id="importGuestButton" class="secondary-button">Use guest city for this account</button>
             <button id="logoutButton" class="secondary-button">Log out</button>
+            <button id="switchAccountButton" class="secondary-button">Switch account</button>
         </div>
         <p class="account-hint">Cloud saves sync every 30 seconds and when you press Save. Log out to return to your separate guest city.</p>
     </div>
@@ -601,6 +609,18 @@
     </div>
 </dialog>
 
+<dialog id="feedbackModal" class="account-modal feedback-modal" aria-labelledby="feedbackTitle" aria-describedby="feedbackOffer">
+    <div class="account-heading"><div><p class="eyebrow">HELP SHAPE LAST CITY</p><h2 id="feedbackTitle">How is the rebuild going?</h2></div><button id="feedbackCloseButton" class="secondary-button" aria-label="Skip feedback">✕</button></div>
+    <p id="feedbackOffer">All opinions welcome. Your first confirmed feedback earns ×2 resources for 2 minutes of active play.</p>
+    <form id="feedbackForm">
+        <div class="feedback-fields"><label>Feedback type<select id="feedbackCategory"><option value="balance">Pacing &amp; balance</option><option value="bug">Bug report</option><option value="idea">Suggestion</option><option value="other">Other</option></select></label><label>Overall experience (optional)<select id="feedbackRating"><option value="">Prefer not to rate</option><option value="1">1 — Needs work</option><option value="2">2 — Rough</option><option value="3">3 — Okay</option><option value="4">4 — Good</option><option value="5">5 — Great</option></select></label></div>
+        <label>Your feedback<textarea id="feedbackText" rows="5" minlength="10" maxlength="2000" required placeholder="What felt fun, confusing or too slow? For bugs, tell us what happened and how to repeat it."></textarea></label>
+        <p class="account-hint">Sent to the development team's private feedback records. Includes stage, play time and build; signed-in feedback includes your account ID. Please don't include passwords or personal information. No positive rating is required.</p>
+        <p id="feedbackMessage" role="status" aria-live="polite"></p>
+        <div class="account-actions"><button id="feedbackSubmitButton" class="secondary-button" type="submit">Send feedback</button><button id="feedbackSkipButton" class="secondary-button" type="button">Skip for now</button></div>
+    </form>
+</dialog>
+
 <script src="src/cloud/cloud-config.js?v=google-1"></script>
 <script src="src/game/progression.js"></script>
 <script src="src/game/adventure.js"></script>
@@ -610,6 +630,7 @@
 <script src="src/game/glyphs.js"></script>
 <script src="src/ui/player-ui.js"></script>
 <script src="src/ui/startup.js"></script>
+<script src="src/ui/feedback.js"></script>
 <script src="src/game/economy.js"></script>
 <script src="src/game/game.js"></script>
     <script src="src/cloud/cloud-save.js?v=account-recovery-1"></script>

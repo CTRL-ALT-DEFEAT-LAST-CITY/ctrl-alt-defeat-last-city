@@ -53,15 +53,19 @@ function buyInfrastructure(stage, key) {
 function beaconCost() { return [5000, 15000, 40000][game.adventure.progression.beaconModules] || 0; }
 function engineRecipe() { return ENGINE_RECIPES[Math.floor(game.adventure.deliveries / 6) % ENGINE_RECIPES.length]; }
 function engineCost() { return 35 + Math.min(2, Math.floor(game.adventure.deliveries / 6)) * 15; }
+function engineDeliveryReward(job) {
+    const refund = Number.isFinite(job.inputCost) ? job.inputCost : job.reward;
+    return refund + (job.reward - refund) * feedbackResourceMultiplier();
+}
 function engineDuration(level = game.stage3Upgrades.assemblySpeed) { return Math.max(2500, 8000 - infrastructureLevel("coolingSystem") * 1000 - Math.min(4, level) * 750 - Math.max(0, level - 4) * 400); }
 function searchDuration(level = game.stage2Upgrades.survivorSpeed) { return Math.max(2000, 4500 - infrastructureLevel("expeditionCrew") * 400 - Math.min(4, level) * 500 - Math.max(0, level - 4) * 125); }
 function searchReward(site, level = game.stage2Upgrades.survivorSpeed) {
     const base = [8, 12, 10][site] * (1 + infrastructureLevel("searchTools") * .2);
     // Active tools scale rewards; production drives specialize in passive income.
-    return upgradeAmount('survivorSpeed', base, level) * stageResetMultiplier(2) * previousStageMultiplier(2) * getCompanionMultiplier(2) * getGlyphMultiplier(2) * (1 + Math.sqrt(Math.max(0, zoneRate(2))) * .08);
+    return upgradeAmount('survivorSpeed', base, level) * stageResetMultiplier(2) * previousStageMultiplier(2) * getCompanionMultiplier(2) * getGlyphMultiplier(2) * (1 + Math.sqrt(Math.max(0, zoneRate(2) / feedbackResourceMultiplier())) * .08) * feedbackResourceMultiplier();
 }
 function engineProfit(level = game.stage3Upgrades.assemblySpeed) {
-    return upgradeAmount('assemblySpeed', 12, level) * stageResetMultiplier(3) * previousStageMultiplier(3) * (1 + infrastructureLevel("precisionTools") * .2) * getCompanionMultiplier(3) * getGlyphMultiplier(3);
+    return upgradeAmount('assemblySpeed', 12, level) * stageResetMultiplier(3) * previousStageMultiplier(3) * (1 + infrastructureLevel("precisionTools") * .2) * getCompanionMultiplier(3) * getGlyphMultiplier(3) * feedbackResourceMultiplier();
 }
 function progressionObjective(stage) {
     const a = game.adventure, p = a.progression;
@@ -107,12 +111,13 @@ function handleProgressionAction(stage, action, choice, automatic = false) {
         a.assembly = [];
         p.production = {
             readyAt: Date.now() + engineDuration(), startedAt: Date.now(),
-            reward: cost + engineProfit()
+            reward: cost + engineProfit() / feedbackResourceMultiplier(), inputCost: cost
         };
         if (!automatic) playSfx("build");
     } else if (stage === 3 && action === "deliver") {
         if (!p.production || Date.now() < p.production.readyAt) return true;
-        grantZoneResource(3, p.production.reward, !automatic);
+        // Double earned profit at delivery, never refund inputs twice. Older funded jobs remain exact.
+        grantZoneResource(3, engineDeliveryReward(p.production), !automatic);
         a.deliveries++;
         p.production = null;
         if (!automatic) { showNotification("Engine delivered! " + a.deliveries + "/18"); playSfx("dispatch"); }
@@ -130,7 +135,7 @@ function handleProgressionAction(stage, action, choice, automatic = false) {
 function fieldInterval(level = game.stage4Upgrades.fieldPower) { return Math.max(800, (1800 - Math.min(4, level) * 200 - Math.max(0, level - 4) * 50) / (1 + infrastructureLevel("pulseFrequency") * .18)); }
 function fieldReward(charged, level = game.stage4Upgrades.fieldPower) {
     // Charged nodes remain worth three blue nodes, including the flat phase.
-    return upgradeAmount('fieldPower', 5, level) * (charged ? 3 : 1) * (1 + infrastructureLevel("fieldCollector") * .25) * stageResetMultiplier(4) * previousStageMultiplier(4) * getCompanionMultiplier(4) * getGlyphMultiplier(4);
+    return upgradeAmount('fieldPower', 5, level) * (charged ? 3 : 1) * (1 + infrastructureLevel("fieldCollector") * .25) * stageResetMultiplier(4) * previousStageMultiplier(4) * getCompanionMultiplier(4) * getGlyphMultiplier(4) * feedbackResourceMultiplier();
 }
 function spawnFieldNode() {
     const p = game.adventure.progression;
@@ -193,7 +198,8 @@ function renderProgressionZone(stage) {
         const remaining = Math.max(0, Math.ceil((a.cooldownUntil - Date.now()) / 1000));
         activity = '<div class="search-sites">' + ["🌳 Overgrown Camp", "🚃 Rusted Train", "🏚️ Storage Shed"].map((name, i) => '<button data-action="search" data-choice="' + i + '" ' + (remaining ? "disabled" : "") + '>' + name + '<small>' + (remaining ? "Crew returns in " + remaining + "s" : "Searches " + a.siteSearches[i] + "/" + (i === 2 ? 8 : 14) + " · +" + formatNumber(searchReward(i)) + " Scrap") + '</small></button>').join("") + '</div><p class="activity-tip">Find one key after 8 searches at each site, then another at 14 Camp/Train searches. Invest in your crew and save 500 Scrap to open the gate.</p>';
     } else {
-        const recipe = engineRecipe(), job = p.production, remaining = job ? Math.max(0, Math.ceil((job.readyAt - Date.now()) / 1000)) : 0;
+        const recipe = engineRecipe(), job = p.production ? { ...p.production, reward: engineDeliveryReward(p.production) } : null,
+            remaining = job ? Math.max(0, Math.ceil((job.readyAt - Date.now()) / 1000)) : 0;
         activity = '<p class="recipe-label">Order ' + (a.deliveries + 1) + ' · ' + recipe.name + '</p><div class="assembly-slots">' + recipe.pieces.map((name, i) => '<span class="' + (a.assembly[i] === name ? "filled" : "") + '">' + (a.assembly[i] === name ? "✓ " : "") + name + '</span>').join("") + '</div><div class="activity-buttons">' + ["Gear", "Spring", "Plate"].map(name => '<button data-action="component" data-choice="' + name + '" ' + (job ? "disabled" : "") + '>' + name + '</button>').join("") + '<button data-action="assemble" ' + (job || a.assembly.length !== 3 || game.parts < engineCost() ? "disabled" : "") + '>Process · ' + engineCost() + ' Parts</button>' + (job ? '<button data-action="deliver" ' + (remaining ? "disabled" : "") + '>' + (remaining ? "Processing · " + remaining + "s" : "Deliver · +" + formatNumber(job.reward) + " Parts") + '</button>' : "") + '</div>' + (job ? '<div class="production-track"><div style="width:' + Math.min(100, (Date.now() - job.startedAt) / (job.readyAt - job.startedAt) * 100) + '%"></div></div>' : "") + '<p class="activity-tip">Recipes change every 6 deliveries. Processing takes ' + engineDuration() / 1000 + 's. Buy Forge Tools for larger profits and faster jobs, or Auto Assembly to automate the loop.</p>';
     }
     const completed = isZoneUnlocked(stage + 1);

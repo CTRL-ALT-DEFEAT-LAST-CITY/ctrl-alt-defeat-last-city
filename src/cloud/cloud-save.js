@@ -30,6 +30,8 @@
     }
     function message(text) { el("accountMessage").textContent = text; }
     function openAccount() {
+        if (el('feedbackModal')?.open) return;
+        if (el('playerSettings')) el('playerSettings').open = false;
         if (!el("accountModal").open) el("accountModal").showModal();
         if (!owner && !recovering && !el("accountMessage").textContent) message(ACCOUNT_GUIDANCE);
     }
@@ -42,6 +44,14 @@
         el("cloudSyncButton").disabled = switching || !!uploading || !!conflict;
         el("importGuestButton").disabled = !ready || switching || !!uploading || !!conflict || !read(GUEST_KEY);
         el("logoutButton").disabled = switching || !!uploading;
+        if (el('switchAccountButton')) el('switchAccountButton').disabled = switching || !!uploading;
+        for (const id of ['accountButton', 'settingsAccountButton']) if (el(id)) {
+            el(id).textContent = owner ? '☁ Manage / Switch account' : '☁ Create account / Log in'; el(id).disabled = switching;
+        }
+        if (el('startPlayLabel')) el('startPlayLabel').textContent = owner ? 'PLAY' : 'PLAY AS GUEST';
+        if (el('startAccountHint')) el('startAccountHint').textContent = owner ? 'Signed in · cloud saves sync with this account.' : 'Guest play saves on this device. Log in later through Settings to import your guest city.';
+        if (el('settingsAccountStatus')) el('settingsAccountStatus').textContent = owner ? 'Signed in · ' + clientUserEmail : 'Guest · saved on this device. Log in to enable cloud saves.';
+        if (el('settingsCloudSyncButton')) { el('settingsCloudSyncButton').textContent = owner ? '☁ Sync cloud now' : '☁ Save to cloud / Log in'; el('settingsCloudSyncButton').disabled = switching || !!uploading || !!conflict; }
     }
     let clientUserEmail = "";
     function pause(value) {
@@ -202,6 +212,13 @@
     window.LastCityCloud = {
         getSaveKey: key,
         isSwitching: () => switching,
+        async submitFeedback(payload) {
+            if (!client || switching) throw new Error('Feedback service is not ready. Retry shortly.');
+            const { data, error } = await client.rpc('submit_player_feedback', payload);
+            if (error) throw new Error(error.code === 'PGRST202' || error.code === '42883'
+                ? 'Feedback collection needs setup by the game owner.' : 'Feedback service unavailable or limit reached. Retry later.');
+            return data;
+        },
         onSave(manual) {
             if (!owner) return;
             markPending();
@@ -362,6 +379,12 @@
         }
     }
     el("accountButton").addEventListener("click", openAccount);
+    el('settingsAccountButton')?.addEventListener('click', openAccount);
+    el('settingsCloudSyncButton')?.addEventListener('click', () => {
+        if (switching) return;
+        if (!owner) openAccount();
+        else { game.saveLocal(); void sync(); }
+    });
     el("accountClose").addEventListener("click", () => el("accountModal").close());
     el("accountForm").addEventListener("submit", event => { event.preventDefault(); void authAction("login"); });
     el("signupButton").addEventListener("click", () => void authAction("signup"));
@@ -381,14 +404,16 @@
             await sync();
         } catch (error) { message(error.message); }
     });
-    el("logoutButton").addEventListener("click", async () => {
+    async function leaveAccount(changeAccount = false) {
         if (switching || uploading) return;
         game.saveLocal();
         await sync();
         const { error } = await client.auth.signOut({ scope: "local" });
         if (error) message(error.message);
-        else message("Logged out. Your account city is kept separately from guest progress.");
-    });
+        else { message(changeAccount ? 'Signed out. Choose Google or email to sign in to another account. Each city is kept separately.' : "Logged out. Your account city is kept separately from guest progress."); if (changeAccount) openAccount(); }
+    }
+    el("logoutButton").addEventListener("click", () => void leaveAccount());
+    el('switchAccountButton')?.addEventListener('click', () => void leaveAccount(true));
     window.addEventListener("online", () => void sync());
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "hidden") { game.saveLocal(); void sync(); }
@@ -456,4 +481,5 @@
         }
     }
     void init();
+    render();
 })();
