@@ -242,3 +242,137 @@ body.upgrades-open .preservation-panel { display: block; }
 #feedbackMessage { line-height: 1.6; color: #ffcf83; overflow-wrap: anywhere; }
 .feedback-modal button { min-height: 44px; }
 @media (max-width: 500px) { .feedback-fields { grid-template-columns: 1fr; gap: 0; } .feedback-modal { padding: 18px; } }
+
+/* Predictable navigation: Play = activities, Upgrades = every purchase. */
+.top-header { padding-top: 10px; padding-bottom: 10px; }
+.logo-section h1 { font-size: 25px; line-height: 1.2; margin: 0; }
+.studio-name { margin: 0 0 3px; font-size: 9px; line-height: 1.3; }
+.wallet-bar { padding-top: calc(8px + env(safe-area-inset-top,0px)); padding-bottom: 8px; }
+.wallet-primary > strong { font-size: 24px; }
+.top-header .tagline { display: none; }
+.game-container { column-gap: 18px; row-gap: 10px; }
+.game-container > .game-mode-tabs { grid-row: 1 / span 10; }
+.game-mode-tab { font-size: 13px; min-height: 46px; }
+.game-mode-tab.active { background: var(--world-glow); border: 1px solid var(--world-color); box-shadow: inset 3px 0 var(--world-color); }
+.ready-badge[hidden] { display: none; }
+.game-container > .game-mode-tabs { top: calc(var(--wallet-offset,76px) + 12px); }
+.wallet-luck { cursor: default; }
+.world-banner { min-height: 0; padding: 18px 22px; gap: 10px; grid-template-columns: minmax(0,1fr) auto; }
+.world-banner h2 { font-size: clamp(24px,3vw,30px); margin: 3px 0 6px; }
+.world-mood, .world-zone-marker, .world-objective { display: none; }
+.world-banner-copy > p:last-of-type { font-size: 13px; line-height: 1.5; max-width: 70ch; }
+.world-banner-copy { max-width: none; }
+body.upgrades-open .world-banner, body.glyphs-open .world-banner, body.companions-open .world-banner, body.stories-open .world-banner, body.stats-open .world-banner { display: none; }
+.milestone-panel { grid-template-columns: minmax(0,1fr) 80px auto; gap: 10px; padding: 12px 16px; }
+.milestone-copy span { font-size: 12px; }
+.milestone-progress { grid-column: 2; grid-row: 1; }
+.milestone-percent { display: none; }
+#milestoneAction { min-height: 44px; padding: 8px 14px; font-size: 13px; white-space: normal; }
+body.upgrades-open .milestone-panel, body.upgrades-open .tutorial-hint { display: none; }
+.tutorial-hint { font-size: 12px; padding: 8px 12px; }
+.save-status-row { margin: 0; }
+.stage-panel.active { gap: 14px; }
+.stage-panel.active > .resource-section { display: none !important; }
+.stage-panel.active > .game-layout { display: block; order: -1; }
+body:not(.upgrades-open):not(.stats-open):not(.companions-open):not(.stories-open):not(.glyphs-open) .stage-panel.active .zone-mount { order: 0; }
+.stage-panel > .next-purchase { order: 1; }
+.stage-panel > .engagement-grid { order: 2; }
+.city-panel { min-height: 0; padding: 16px 20px; justify-content: flex-start; }
+.city-header { position: static; width: 100%; padding: 0; margin-bottom: 10px; }
+.city-header h2, .city-header .eyebrow, .city-description, .city-visual { display: none; }
+.city-level-group { width: 100%; }
+.city-level { flex: 1; padding: 6px 12px; }
+.energy-button { margin-top: 0; padding: 14px 20px; min-height: 64px; min-width: 0; width: min(360px,100%); }
+.city-panel .momentum-bar { margin: 10px 0 0; padding: 8px 12px; width: min(360px,100%); }
+.city-panel .click-stats { margin-top: 8px; }
+.city-renewal { width: 100%; margin-top: 12px; }
+.city-renewal summary { min-height: 44px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; color: #cbd6e6; cursor: pointer; font-size: 13px; }
+.zone-scene { padding: 18px; min-height: 0; }
+.zone-content > .eyebrow, .zone-content > h2, .zone-content > .zone-lore, .zone-quest, .zone-pet-summary { display: none; }
+.zone-content { width: 100%; }
+.activity-tip { margin: 10px 0; font-size: 13px; line-height: 1.5; }
+.zone-unlock, .activity-buttons button, .search-sites button { min-height: 44px; font-size: 13px; }
+.collection-header { margin-bottom: 12px; }
+.collection-header h2 { font-size: 22px; }
+.engagement-grid { gap: 12px; }
+.dispatch-card, .contracts-card { padding: 16px; }
+.dispatch-card h2, .contracts-card h2 { font-size: 18px; }
+.next-purchase { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 4px 14px; align-items: center; padding: 12px 16px; }
+.next-purchase-info { grid-column: 1; display: grid; gap: 4px; min-width: 0; }
+.next-purchase-info > p, .next-purchase-info > strong { margin: 0; }
+.next-purchase-info > strong { font-size: 14px; }
+.next-purchase-info > .purchase-progress { display: flex; gap: 10px; align-items: center; }
+.next-purchase-info .purchase-track { flex: 1; margin: 0; }
+.next-purchase-info > small { margin: 0; font-size: 12px; }
+.next-purchase-info > .upgrade-eta { display: none; }
+.next-purchase button { grid-column: 2; min-height: 44px; margin: 0; padding: 8px 14px; font-size: 13px; }
+.next-purchase button[hidden] { display: none; }
+.upgrade-anchor, .upgrade-hub, .shop-buildings, .stage-panel > .building-panel { display: none; }
+body.upgrades-open .upgrade-anchor { display: block; height: 0; margin-bottom: -10px; scroll-margin-top: calc(var(--wallet-offset,76px) + 12px); }
+body.upgrades-open .upgrade-hub { display: block; position: sticky; top: calc(var(--wallet-offset,76px) + 8px); z-index: 116; padding: 14px 16px 10px; background: #101827f7; border: 1px solid #46546b; border-radius: 12px; }
+.purchase-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.purchase-heading h2 { margin: 0; font-size: 23px; }
+.purchase-heading > span { font-size: 13px; color: var(--world-color); }
+.purchase-heading .eyebrow { font-size: 10px; margin: 0; }
+.purchase-tabs { display: flex; gap: 8px; margin-top: 12px; }
+.purchase-tabs button { flex: 1; min-height: 44px; padding: 9px 14px; border: 1px solid #45546b; border-radius: 8px; background: #162134; color: #cbd6e6; font-size: 14px; cursor: pointer; }
+.purchase-tabs button[aria-pressed="true"] { border-color: var(--world-color); color: var(--world-color); background: var(--world-glow); box-shadow: inset 0 -2px var(--world-color); }
+#purchaseHelp { margin: 8px 0 0; font-size: 13px; color: #bfcddd; }
+body.upgrades-open .stage-panel.active { display: flex; flex-direction: column; gap: 14px; }
+body.upgrades-open .stage-panel > .next-purchase { order: 0; width: 100%; }
+body.upgrades-open .stage-panel .zone-mount, body.upgrades-open .stage-panel .game-layout { display: none !important; }
+body.upgrades-open .upgrade-sidebar { width: 100%; padding: 0; position: static; max-height: none; overflow: visible; background: none; border: 0; box-shadow: none; }
+body.upgrades-open[data-shop-view="buildings"] .upgrade-sidebar { display: none; }
+body.upgrades-open[data-shop-view="buildings"] .stage-panel.active > .building-panel { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+body.upgrades-open[data-shop-view="buildings"] .stage-panel.active > .shop-buildings { display: block; }
+.stage-panel > .building-panel .panel-heading { grid-column: 1 / -1; }
+body.upgrades-open[data-shop-view="research"] .stage-panel > .next-purchase { display: none; }
+.upgrade-sidebar [data-shop-pane] { display: none; }
+body[data-shop-view="tools"] .upgrade-sidebar [data-shop-pane="tools"], body[data-shop-view="research"] .upgrade-sidebar [data-shop-pane="research"] { display: block; }
+.upgrade-sidebar .upgrade-section + .upgrade-section { margin-top: 0; padding-top: 0; border-top: 0; }
+.upgrade-sidebar .upgrade-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.upgrade-sidebar .panel-heading { margin-bottom: 12px; }
+.upgrade-sidebar .panel-heading h2 { font-size: 20px; }
+.upgrade-card, .tech-card { min-height: 0; padding: 16px; }
+.stage-panel > .building-panel { width: 100%; max-height: none; overflow: visible; }
+.building-card { padding: 14px; margin-bottom: 0; }
+.building-panel .panel-heading { margin-bottom: 6px; }
+.building-top h3 { font-size: 15px; }
+.building-top p, .building-stats { font-size: 13px; }
+.buy-button { min-height: 44px; font-size: 13px; }
+.shop-buildings .zone-workshop { margin: 0; padding: 16px; }
+.infrastructure-grid button { min-height: 44px; padding: 16px; font-size: 14px; }
+body:not([data-shop-view="research"]) #preservationPanel { display: none !important; }
+.preservation-panel { margin: 0; }
+.badge-section { margin-top: 16px; }
+.stage-panel, .upgrade-hub, .shop-buildings { scroll-margin-top: calc(250px + env(safe-area-inset-top,0px)); }
+#worldBanner, .upgrade-hub { scroll-margin-top: calc(var(--wallet-offset,76px) + 12px); }
+.glyph-view-tabs { top: calc(var(--wallet-offset,76px) + 8px); }
+.building-card:focus-visible, .infrastructure-grid:focus-visible, .zone-content:focus-visible { outline: 2px solid var(--world-color); outline-offset: 4px; }
+.navigation-target { outline: 2px solid var(--world-color); outline-offset: 3px; }
+@media (min-width:901px) { .game-container { grid-template-columns: 160px minmax(0,1fr); } }
+@media (max-width:900px) {
+    .game-container > .game-mode-tabs { grid-row: auto; top: auto; }
+    .game-mode-tab { font-size: 11px; min-height: 52px; }
+    .game-mode-tab.active { border: 0; box-shadow: inset 0 -2px var(--world-color); }
+    .top-header { padding-top: 10px; padding-bottom: 10px; }
+    .world-banner { padding: 14px 16px; }
+    .world-banner h2 { font-size: 24px; }
+    .milestone-panel { grid-template-columns: minmax(0,1fr) auto; }
+    .milestone-progress { display: none; }
+    .milestone-copy strong { font-size: 13px; }
+    #milestoneAction { max-width: 140px; font-size: 12px; }
+    .purchase-heading > span { font-size: 12px; }
+    .purchase-tabs { gap: 6px; }
+    .purchase-tabs button { padding: 9px 6px; font-size: 13px; }
+    .next-purchase { gap: 4px 8px; padding: 12px; }
+    .next-purchase button { max-width: 120px; padding: 8px 10px; font-size: 12px; white-space: normal; }
+    .next-purchase .purchase-status { font-size: 10px; }
+    .upgrade-sidebar .upgrade-grid { grid-template-columns: 1fr; }
+    body.upgrades-open[data-shop-view="buildings"] .stage-panel.active > .building-panel { grid-template-columns: 1fr; }
+    .purchase-heading .eyebrow { display: none; }
+    body.upgrades-open .upgrade-hub { padding: 12px; }
+    .city-panel { padding: 14px; }
+    .zone-scene { padding: 14px; }
+}
+@media (max-width:520px) { .purchase-heading { align-items: baseline; flex-wrap: wrap; gap: 4px; } .purchase-heading h2 { font-size: 21px; } .wallet-luck { min-height: 0; } }

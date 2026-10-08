@@ -241,11 +241,6 @@ function initWorldUI() {
         if (id) openStory(id);
     });
     document.addEventListener?.("visibilitychange", () => { if (!document.hidden) scheduleLorePopup(); });
-    el("worldExploreButton")?.addEventListener("click", () => {
-        switchGameMode("city");
-        el("zone" + currentStageView)?.scrollIntoView?.({ behavior: canPlayVfx() ? "smooth" : "auto", block: "start" });
-    });
-    el("worldUpgradeButton")?.addEventListener("click", () => switchGameMode("upgrades"));
     if (currentGameMode === "city") renderZone(currentStageView);
     renderWorldUI();
 }

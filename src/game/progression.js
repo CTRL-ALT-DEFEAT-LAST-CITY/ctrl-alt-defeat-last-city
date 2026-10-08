@@ -177,13 +177,17 @@ function updateCollectionField(now = Date.now()) {
     }
     renderFieldNodes();
 }
+function infrastructureContentMarkup(stage, key) {
+    const def = INFRASTRUCTURE[stage][key], level = infrastructureLevel(key), cost = infrastructureCost(def, level);
+    const benefit = def.output ? '+' + formatNumber(def.output * Math.pow(1.3,level)) + ' base ' + ZONES[stage].label + '/sec on next build' : '×' + def.multiplier + ' passive production per build';
+    return '<strong>' + def.icon + ' ' + def.name + '</strong><small>' + benefit + '</small><span>Lv ' + level + '/' + def.max + ' · ' + (level >= def.max ? 'MAXED' : formatNumber(cost) + ' ' + ZONES[stage].label) + '</span>' + purchaseProgressMarkup(game[ZONES[stage].currency], cost, level >= def.max);
+}
 function infrastructureMarkup(stage) {
     if (!INFRASTRUCTURE[stage]) return "";
     return '<section class="zone-workshop"><h3>Production buildings · kept on reset</h3><div class="infrastructure-grid">' +
         Object.entries(INFRASTRUCTURE[stage] || {}).map(([key, def]) => {
             const level = infrastructureLevel(key), cost = infrastructureCost(def, level);
-            const benefit = def.output ? '+' + formatNumber(def.output * Math.pow(1.3,level)) + ' base ' + ZONES[stage].label + '/sec on next build' : '×' + def.multiplier + ' passive production per build';
-            return '<button data-action="infrastructure" data-choice="' + key + '" ' + (level >= def.max || game[ZONES[stage].currency] < cost ? "disabled" : "") + '><strong>' + def.icon + " " + def.name + '</strong><small>' + benefit + '</small><span>Lv ' + level + "/" + def.max + " · " + (level >= def.max ? "MAXED" : formatNumber(cost) + " " + ZONES[stage].label) + '</span>' + purchaseProgressMarkup(game[ZONES[stage].currency], cost, level >= def.max) + '</button>';
+            return '<button data-action="infrastructure" data-choice="' + key + '" ' + (level >= def.max || game[ZONES[stage].currency] < cost ? "disabled" : "") + '>' + infrastructureContentMarkup(stage,key) + '</button>';
         }).join("") + "</div></section>";
 }
 function renderProgressionZone(stage) {
@@ -203,7 +207,7 @@ function renderProgressionZone(stage) {
         activity = '<p class="recipe-label">Order ' + (a.deliveries + 1) + ' · ' + recipe.name + '</p><div class="assembly-slots">' + recipe.pieces.map((name, i) => '<span class="' + (a.assembly[i] === name ? "filled" : "") + '">' + (a.assembly[i] === name ? "✓ " : "") + name + '</span>').join("") + '</div><div class="activity-buttons">' + ["Gear", "Spring", "Plate"].map(name => '<button data-action="component" data-choice="' + name + '" ' + (job ? "disabled" : "") + '>' + name + '</button>').join("") + '<button data-action="assemble" ' + (job || a.assembly.length !== 3 || game.parts < engineCost() ? "disabled" : "") + '>Process · ' + engineCost() + ' Parts</button>' + (job ? '<button data-action="deliver" ' + (remaining ? "disabled" : "") + '>' + (remaining ? "Processing · " + remaining + "s" : "Deliver · +" + formatNumber(job.reward) + " Parts") + '</button>' : "") + '</div>' + (job ? '<div class="production-track"><div style="width:' + Math.min(100, (Date.now() - job.startedAt) / (job.readyAt - job.startedAt) * 100) + '%"></div></div>' : "") + '<p class="activity-tip">Recipes change every 6 deliveries. Processing takes ' + engineDuration() / 1000 + 's. Buy Forge Tools for larger profits and faster jobs, or Auto Assembly to automate the loop.</p>';
     }
     const completed = isZoneUnlocked(stage + 1);
-    const markup = '<article class="zone-scene zone-' + stage + '"><div class="zone-scenery" aria-hidden="true"><span>' + zone.icon + '</span><i></i><i></i><i></i></div><div class="zone-content"><p class="eyebrow">ZONE ' + stage + '</p><h2>' + zone.name + '</h2><p class="zone-lore">' + zone.lore + '</p><div class="zone-quest"><strong>' + (completed ? "✓ Zone objective complete" : zone.quest) + '</strong><span>' + objective.detail + '</span></div>' + activity + '<button class="zone-unlock" data-action="unlock" ' + (completed || !objective.ready ? "disabled" : "") + '>' + (completed ? "✓ " + zone.next + " unlocked" : "Open " + zone.next) + '</button></div></article>' + infrastructureMarkup(stage);
+    const markup = '<article class="zone-scene zone-' + stage + '"><div class="zone-scenery" aria-hidden="true"><span>' + zone.icon + '</span><i></i><i></i><i></i></div><div class="zone-content"><p class="eyebrow">ZONE ' + stage + '</p><h2>' + zone.name + '</h2><p class="zone-lore">' + zone.lore + '</p><div class="zone-quest"><strong>' + (completed ? "✓ Zone objective complete" : zone.quest) + '</strong><span>' + objective.detail + '</span></div>' + activity + '<button class="zone-unlock" data-action="unlock" ' + (completed || !objective.ready ? "disabled" : "") + '>' + (completed ? "✓ " + zone.next + " unlocked" : "Open " + zone.next) + '</button></div></article>';
     if (mount.innerHTML !== markup) mount.innerHTML = markup;
 }
 function renderCollectionZone() {
@@ -225,7 +229,8 @@ function renderCollectionZone() {
         tower.disabled = p.relayTowers >= 3 || p.fieldCollected < count || game.circuits < cost;
     }
     if (gate) { gate.disabled = !progressionObjective(4).ready || game.stage5Unlocked; gate.textContent = game.stage5Unlocked ? "✓ Celestial Citadel unlocked" : "Open Celestial Citadel"; }
-    if (workshop) { const markup = infrastructureMarkup(4); if (workshop.innerHTML !== markup) workshop.innerHTML = markup; }
+    // Production buildings live in Upgrades, not beneath the collection field.
+    if (workshop && workshop.innerHTML) workshop.innerHTML = '';
     renderFieldNodes();
 }
 function renderFieldNodes() {

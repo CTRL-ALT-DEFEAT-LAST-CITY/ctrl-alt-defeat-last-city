@@ -277,7 +277,7 @@ function renderZone(stage) {
         activity = '<div class="activity-buttons"><button data-action="channel" ' + (Date.now() < (a.coreReadyAt || 0) ? 'disabled' : '') + '>Channel reactor · +' + formatNumber(coreChannelReward()) + ' Cores</button></div><div class="guardian-avatar">' + (a.bossDefeated ? "🏆" : "🤖") + '</div><div class="guardian-health"><div style="width:' + a.bossHealth + '%"></div></div><div class="activity-buttons">' + [0, 1, 2].map(n => '<button data-action="shield" data-choice="' + n + '" ' + (a.shields.includes(n) || a.bossDefeated ? "disabled" : "") + '>' + (a.shields.includes(n) ? "✓ Disabled" : "Break shield " + (n + 1)) + '</button>').join("") + '<button data-action="fire" ' + (a.shields.length !== 3 || game.cores < cannonCost() || a.bossDefeated ? "disabled" : "") + '>Fire cannon · ' + cannonCost() + ' Cores</button></div><p class="activity-tip">Cannon costs rise with each shot: 100 → 200 → 400 → 800 Cores. Each shot deals 25 damage. Shields regenerate after a shot. Victory grants permanent ×2 Core production and the Legacy Glyph Archive.</p>';
     }
     const completed = stage === 5 ? a.bossDefeated : isZoneUnlocked(stage + 1);
-    mount.innerHTML = '<article class="zone-scene zone-' + stage + '"><div class="zone-scenery" aria-hidden="true"><span>' + zone.icon + '</span><i></i><i></i><i></i></div><div class="zone-content"><p class="eyebrow">ZONE ' + stage + ' · ' + zone.label.toUpperCase() + '</p><h2>' + zone.name + '</h2><p class="zone-lore">' + zone.lore + '</p><div class="zone-quest"><strong>' + (completed ? "✓ Zone objective complete" : zone.quest) + '</strong><span>' + objective.detail + '</span></div>' + activity + infrastructureMarkup(stage) + (stage < 5 ? '<button class="zone-unlock" data-action="unlock" ' + (completed || !objective.ready ? "disabled" : "") + '>' + (completed ? "✓ " + zone.next + " unlocked" : stage === 1 ? "Restore the beacon → Settlement" : "Open " + zone.next) + '</button>' : "") + '<p class="zone-pet-summary">Companion power: ×' + getCompanionMultiplier(stage).toFixed(2) + ' · Hatch ' + zone.egg + ' in the Companions tab.</p></div></article>';
+    mount.innerHTML = '<article class="zone-scene zone-' + stage + '"><div class="zone-scenery" aria-hidden="true"><span>' + zone.icon + '</span><i></i><i></i><i></i></div><div class="zone-content"><p class="eyebrow">ZONE ' + stage + ' · ' + zone.label.toUpperCase() + '</p><h2>' + zone.name + '</h2><p class="zone-lore">' + zone.lore + '</p><div class="zone-quest"><strong>' + (completed ? "✓ Zone objective complete" : zone.quest) + '</strong><span>' + objective.detail + '</span></div>' + activity + (stage < 5 ? '<button class="zone-unlock" data-action="unlock" ' + (completed || !objective.ready ? "disabled" : "") + '>' + (completed ? "✓ " + zone.next + " unlocked" : stage === 1 ? "Restore the beacon → Settlement" : "Open " + zone.next) + '</button>' : "") + '<p class="zone-pet-summary">Companion power: ×' + getCompanionMultiplier(stage).toFixed(2) + ' · Hatch ' + zone.egg + ' in the Pets tab.</p></div></article>';
 }
 function renderCompanions() {
     const panel = el("companionPanel");
@@ -307,14 +307,16 @@ function initAdventureUI() {
         document.body.classList.remove("hatch-open");
     });
     for (let stage = 1; stage <= 5; stage++) {
-        const mount = el("zone" + stage);
-        if (mount) mount.addEventListener("click", event => {
-            const button = event.target.closest("button[data-action]");
-            if (!button || button.disabled) return;
-            const raw = button.dataset.choice;
-            const choice = raw === undefined ? undefined : /^[0-9]+$/.test(raw) ? Number(raw) : raw;
-            zoneAction(stage, button.dataset.action, choice);
-        });
+        for (const id of ['zone' + stage, 'purchaseBuildings' + stage]) {
+            const mount = el(id);
+            if (mount) mount.addEventListener("click", event => {
+                const button = event.target.closest("button[data-action]");
+                if (!button || button.disabled) return;
+                const raw = button.dataset.choice;
+                const choice = raw === undefined ? undefined : /^[0-9]+$/.test(raw) ? Number(raw) : raw;
+                zoneAction(stage, button.dataset.action, choice);
+            });
+        }
     }
     el("companionPanel")?.addEventListener("click", event => {
         const button = event.target.closest("button[data-pet-action]");

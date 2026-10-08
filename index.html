@@ -17,8 +17,7 @@
 <section class="wallet-bar" aria-label="Current zone wallet">
     <div class="wallet-primary"><span id="walletLabel">SALVAGE</span><strong id="walletBalance">0</strong><small id="walletRate">+0 / sec</small><small id="feedbackBoostBadge" class="feedback-boost" hidden></small></div>
     <div class="wallet-secondary"><span id="walletTokenLabel">SHARDS</span><strong id="walletTokens">0</strong></div>
-    <button id="walletGlyphButton" class="wallet-luck" title="View glyph collection and Luck upgrades"><span>✧ LUCK</span><strong id="walletLuck">×1.00</strong></button>
-    <button id="walletUpgradeButton" class="wallet-shop" aria-label="Open upgrades">↗ <span>Upgrades</span></button>
+    <div class="wallet-luck" aria-label="Glyph luck"><span>✧ LUCK</span><strong id="walletLuck">×1.00</strong></div>
 </section>
 
 <header class="top-header">
@@ -67,11 +66,10 @@
         <button class="game-mode-tab" data-mode="stats"><span class="nav-icon" aria-hidden="true">▦</span><span>Stats</span></button>
     </nav>
 
-    <section class="world-banner" aria-labelledby="worldZoneName">
+    <section id="worldBanner" class="world-banner" aria-labelledby="worldZoneName">
         <div class="world-banner-copy"><p id="worldZoneNumber" class="eyebrow">ZONE 01 / 05</p>
             <p id="worldZoneMood" class="world-mood">Embers in the ruins</p><h2 id="worldZoneName">Ashfall Outpost</h2>
             <p id="worldZoneIntro">A single campfire. A broken beacon. A city worth bringing back.</p>
-            <div class="world-actions"><button id="worldExploreButton">Explore zone</button><button id="worldUpgradeButton" class="secondary-button">Browse upgrades</button></div>
         </div><div class="world-zone-marker" aria-hidden="true"><span>SECTOR</span><strong>LC</strong></div>
         <div class="world-objective"><span id="worldActivity">Build & restore</span><p id="worldObjective">Build 4 City Centers and restore the beacon.</p></div>
     </section>
@@ -84,6 +82,7 @@
         </div>
         <div class="milestone-progress"><div id="milestoneBar"></div></div>
         <strong id="milestonePercent" class="milestone-percent">0%</strong>
+        <button id="milestoneAction" class="secondary-button" type="button">Find next step →</button>
     </section>
     <div id="tutorialHint" class="tutorial-hint">Tip: gather Salvage, then invest it in your first Camp.</div>
     <div class="save-status-row"><div id="autoSaveIndicator" class="auto-save-indicator">● Auto-save ready</div>
@@ -92,6 +91,16 @@
     <section id="storyPanel" class="story-panel" aria-label="Unlocked city stories"></section>
     <section id="companionPanel" class="companion-panel" aria-label="Eggs and companions"></section>
     <section id="glyphPanel" class="glyph-panel" aria-label="Glyph collection and Luck upgrades"></section>
+    <div id="purchaseAnchor" class="upgrade-anchor" aria-hidden="true"></div>
+    <section id="upgradeHub" class="upgrade-hub" aria-labelledby="purchaseTitle">
+        <div class="purchase-heading"><div><p class="eyebrow">CITY PURCHASES · ONE PLACE</p><h2 id="purchaseTitle">Upgrades</h2></div><span id="purchaseZone">Ashfall Outpost</span></div>
+        <nav class="purchase-tabs" aria-label="Upgrade categories">
+            <button type="button" data-shop-view="buildings" aria-pressed="true">Buildings</button>
+            <button type="button" data-shop-view="tools" aria-pressed="false">Tools</button>
+            <button type="button" data-shop-view="research" aria-pressed="false">Research</button>
+        </nav>
+        <p id="purchaseHelp">Buildings grow your passive income and workforce.</p>
+    </section>
 
     <!-- STAGE 1 -->
     <section id="stage1Panel" class="stage-panel active">
@@ -176,13 +185,16 @@
                     </div>
                 </div>
 
+                <details class="city-renewal"><summary>City renewal · reset rewards</summary>
                 <button id="rebirthButton" class="rebirth-button" style="margin-top:20px;">
                     🌅 City Renewal — Build 4 City Centers
                 </button>
                 <div id="rebirthRequirement" class="rebirth-requirement"></div>
+                </details>
             </div>
 
-            <aside class="building-panel">
+        </section>
+            <aside class="building-panel" data-shop-pane="buildings">
                 <div class="panel-heading">
                     <div>
                         <p class="eyebrow">INFRASTRUCTURE</p>
@@ -258,7 +270,6 @@
                     <button id="buyCitycenter" class="buy-button">Build <span><span id="citycenterCost2">100,000</span> ⚙️</span></button>
                 </div>
             </aside>
-        </section>
 
         <section class="engagement-grid">
             <article class="dispatch-card">
@@ -280,7 +291,7 @@
         </section>
 
         <aside class="upgrade-sidebar" aria-label="Ruins upgrades">
-        <section class="upgrade-section lab-upgrade-section">
+        <section class="upgrade-section lab-upgrade-section" data-shop-pane="tools">
             <div class="panel-heading">
                 <div>
                     <p class="eyebrow">SALVAGE LAB</p>
@@ -291,7 +302,7 @@
             <div id="techUpgrades" class="upgrade-grid"></div>
         </section>
 
-        <section class="upgrade-section">
+        <section class="upgrade-section" data-shop-pane="research">
             <div class="panel-heading">
                 <div>
                     <p class="eyebrow">PERMANENT</p>
@@ -336,15 +347,16 @@
         </section>
 
         <div id="nextPurchase2" class="next-purchase"></div>
+        <div id="purchaseBuildings2" class="shop-buildings" data-shop-pane="buildings"></div>
         <aside class="upgrade-sidebar" aria-label="Settlement upgrades">
-        <section class="upgrade-section">
+        <section class="upgrade-section" data-shop-pane="tools">
             <div class="panel-heading">
                 <div><p class="eyebrow">SCRAP UPGRADES</p><h2>Spend Scrap</h2></div>
             </div>
             <div id="stage2Upgrades" class="upgrade-grid"></div>
         </section>
 
-        <section class="upgrade-section">
+        <section class="upgrade-section" data-shop-pane="research">
             <div class="panel-heading">
                 <div><p class="eyebrow">PERMANENT</p><h2>Settlement Reset Shop (Tokens 🪙)</h2></div>
             </div>
@@ -368,12 +380,13 @@
             </div>
         </section>
         <div id="nextPurchase3" class="next-purchase"></div>
+        <div id="purchaseBuildings3" class="shop-buildings" data-shop-pane="buildings"></div>
         <aside class="upgrade-sidebar" aria-label="Industry upgrades">
-        <section class="upgrade-section">
+        <section class="upgrade-section" data-shop-pane="tools">
             <div class="panel-heading"><div><p class="eyebrow">PARTS UPGRADES</p><h2>Spend Parts</h2></div></div>
             <div id="stage3Upgrades" class="upgrade-grid"></div>
         </section>
-        <section class="upgrade-section">
+        <section class="upgrade-section" data-shop-pane="research">
             <div class="panel-heading"><div><p class="eyebrow">PERMANENT</p><h2>Industry Reset Shop</h2></div></div>
             <div id="stage3ResetUpgrades" class="upgrade-grid"></div>
         </section>
@@ -394,12 +407,13 @@
             </div>
         </section>
         <div id="nextPurchase4" class="next-purchase"></div>
+        <div id="purchaseBuildings4" class="shop-buildings" data-shop-pane="buildings"></div>
         <aside class="upgrade-sidebar" aria-label="Network upgrades">
-        <section class="upgrade-section">
+        <section class="upgrade-section" data-shop-pane="tools">
             <div class="panel-heading"><div><p class="eyebrow">CIRCUIT UPGRADES</p><h2>Spend Circuits</h2></div></div>
             <div id="stage4Upgrades" class="upgrade-grid"></div>
         </section>
-        <section class="upgrade-section">
+        <section class="upgrade-section" data-shop-pane="research">
             <div class="panel-heading"><div><p class="eyebrow">PERMANENT</p><h2>Network Reset Shop</h2></div></div>
             <div id="stage4ResetUpgrades" class="upgrade-grid"></div>
         </section>
@@ -420,12 +434,13 @@
             </div>
         </section>
         <div id="nextPurchase5" class="next-purchase"></div>
+        <div id="purchaseBuildings5" class="shop-buildings" data-shop-pane="buildings"></div>
         <aside class="upgrade-sidebar" aria-label="Ascension upgrades">
-        <section class="upgrade-section">
+        <section class="upgrade-section" data-shop-pane="tools">
             <div class="panel-heading"><div><p class="eyebrow">CORE UPGRADES</p><h2>Spend Cores</h2></div></div>
             <div id="stage5Upgrades" class="upgrade-grid"></div>
         </section>
-        <section class="upgrade-section">
+        <section class="upgrade-section" data-shop-pane="research">
             <div class="panel-heading"><div><p class="eyebrow">PERMANENT</p><h2>Ascension Reset Shop — "The Last City" is here</h2></div></div>
             <div id="stage5ResetUpgrades" class="upgrade-grid"></div>
         </section>

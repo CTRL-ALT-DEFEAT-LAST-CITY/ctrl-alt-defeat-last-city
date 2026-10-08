@@ -1265,7 +1265,9 @@ function updateUpgradeReadyCount() {
     const ready = shops.reduce((sum, [table, state, currency]) => sum + Object.entries(table).filter(([key, def]) =>
         state[key] < def.max && currency >= economyUpgradeCost(def, state[key]) && !(key === "lastCity" && !game.adventure.bossDefeated)).length, 0);
     const archivedReady = Object.entries(PRESERVATION[currentStageView]).filter(([key, def]) => preservationUnlocked(currentStageView,key) && !preservationOwned(currentStageView,key) && game[ZONES[currentStageView].currency] >= def.cost).length;
-    const count = ready + archivedReady;
+    const buildingsReady = currentStageView === 1 ? Object.keys(BUILDINGS).filter(key => game.salvage >= getBuildingCost(key)).length
+        : Object.entries(INFRASTRUCTURE[currentStageView]).filter(([key,def]) => infrastructureLevel(key) < def.max && game[ZONES[currentStageView].currency] >= infrastructureCost(def,infrastructureLevel(key))).length;
+    const count = ready + archivedReady + buildingsReady;
     badge.hidden = count === 0; badge.textContent = count > 9 ? "9+" : count;
 }
 
@@ -1291,18 +1293,31 @@ function renderPurchaseOutlook() {
     };
     const [table, state] = tables[stage], currency = ZONES[stage].currency, balance = game[currency];
     const choices = Object.entries(table).filter(([key, def]) => state[key] < def.max)
-        .map(([key, def]) => ({ name: def.name, cost: economyUpgradeCost(def, state[key]) }));
+        .map(([key, def]) => ({ name: def.name, cost: economyUpgradeCost(def, state[key]), view: 'tools', target: '#' + (stage === 1 ? 'techUpgrades' : 'stage' + stage + 'Upgrades') + ' [data-economy-upgrade="' + key + '"]' }));
     for (const [key,def] of Object.entries(PRESERVATION[stage])) {
-        if (preservationUnlocked(stage,key) && !preservationOwned(stage,key)) choices.push({name:def.name,cost:def.cost});
+        if (preservationUnlocked(stage,key) && !preservationOwned(stage,key)) choices.push({name:def.name,cost:def.cost,view:'research',target:'[data-preservation="' + key + '"]'});
     }
     for (const [key, def] of Object.entries(INFRASTRUCTURE[stage] || {})) {
-        if (infrastructureLevel(key) < def.max) choices.push({ name: def.name, cost: infrastructureCost(def, infrastructureLevel(key)) });
+        if (infrastructureLevel(key) < def.max) choices.push({ name: def.name, cost: infrastructureCost(def, infrastructureLevel(key)), view:'buildings', target:'[data-choice="' + key + '"]' });
     }
-    if (stage === 1) for (const [key, def] of Object.entries(BUILDINGS)) if (Number.isFinite(getBuildingCost(key))) choices.push({ name: def.name, cost: getBuildingCost(key) });
-    const next = choices.sort((a, b) => a.cost - b.cost)[0];
+    if (stage === 1) for (const [key, def] of Object.entries(BUILDINGS)) if (Number.isFinite(getBuildingCost(key))) choices.push({ name: def.name, cost: getBuildingCost(key), view:'buildings', target:'#buy' + key.charAt(0).toUpperCase() + key.slice(1) });
+    const candidates = currentGameMode === 'upgrades' && purchaseView !== 'research' ? choices.filter(choice => choice.view === purchaseView) : choices;
+    const next = candidates.sort((a, b) => a.cost - b.cost)[0];
+    if (mount.dataset.navigationMounted !== 'yes') {
+        mount.innerHTML = '<div id="nextPurchaseInfo' + stage + '" class="next-purchase-info"></div><button id="nextPurchaseLink' + stage + '" type="button" class="secondary-button"></button>';
+        mount.dataset.navigationMounted = 'yes';
+    }
     const markup = next ? `<p class="eyebrow">NEXT INVESTMENT</p><strong>${next.name}</strong>${purchaseProgressMarkup(balance, next.cost)}<small>${balance >= next.cost ? "Ready for purchase" : formatNumber(next.cost - balance) + " " + ZONES[stage].label + " to go"}</small>${purchaseEtaMarkup(balance,next.cost,stage)}`
         : '<p class="eyebrow">UPGRADE STATUS</p><strong>All resource upgrades complete</strong><small>Keep building your legacy.</small>';
-    if (mount.innerHTML !== markup) mount.innerHTML = markup;
+    const info = el('nextPurchaseInfo' + stage), link = el('nextPurchaseLink' + stage);
+    if (info && info.innerHTML !== markup) info.innerHTML = markup;
+    if (link) {
+        link.hidden = !next;
+        if (next) {
+            link.dataset.shopLink = next.view; link.dataset.shopTarget = next.target;
+            link.textContent = 'Find in ' + next.view.charAt(0).toUpperCase() + next.view.slice(1) + ' →';
+        }
+    }
 }
 
 function renderRebirthUpgrades() {
@@ -1697,7 +1712,7 @@ function closeIntroModal() {
     playSfx("upgrade");
     saveGame(false);
     updateGame();
-    (stage === 1 ? energyButton : el('worldExploreButton'))?.focus?.({ preventScroll: true });
+    (stage === 1 ? energyButton : el('milestoneAction'))?.focus?.({ preventScroll: true });
     showOfflineModal();
 }
 
