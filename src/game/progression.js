@@ -180,7 +180,8 @@ function updateCollectionField(now = Date.now()) {
 function infrastructureContentMarkup(stage, key) {
     const def = INFRASTRUCTURE[stage][key], level = infrastructureLevel(key), cost = infrastructureCost(def, level);
     const benefit = def.output ? '+' + formatNumber(def.output * Math.pow(1.3,level)) + ' base ' + ZONES[stage].label + '/sec on next build' : '×' + def.multiplier + ' passive production per build';
-    return '<strong>' + def.icon + ' ' + def.name + '</strong><small>' + benefit + '</small><span>Lv ' + level + '/' + def.max + ' · ' + (level >= def.max ? 'MAXED' : formatNumber(cost) + ' ' + ZONES[stage].label) + '</span>' + purchaseProgressMarkup(game[ZONES[stage].currency], cost, level >= def.max);
+    return '<strong>' + def.icon + ' ' + def.name + '</strong><small>' + benefit + '</small><span>Lv ' + level + '/' + def.max + ' · ' + (level >= def.max ? 'MAXED' : formatNumber(cost) + ' ' + ZONES[stage].label) + '</span>'
+        + (level >= def.max ? '' : purchaseForecastMarkup(stage,['adventure','progression','infrastructure'],key)) + purchaseProgressMarkup(game[ZONES[stage].currency], cost, level >= def.max);
 }
 function infrastructureMarkup(stage) {
     if (!INFRASTRUCTURE[stage]) return "";

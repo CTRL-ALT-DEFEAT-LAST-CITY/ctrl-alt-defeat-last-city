@@ -128,22 +128,50 @@ function runSimulatorAutomation(now = Date.now()) {
         grantZoneResource(5, coreChannelReward(), false);
     }
 }
+function outputChangeMarkup(before, after, unit) {
+    if (!Number.isFinite(before) || !Number.isFinite(after)) return 'No further purchase available';
+    const gain = after - before;
+    const percent = before > 0 ? ' · ' + (gain >= 0 ? '+' : '') + formatNumber(gain / before * 100) + '%' : '';
+    return formatNumber(before) + ' → <strong>' + formatNumber(after) + '</strong> ' + unit
+        + '<small class="upgrade-gain">' + (gain >= 0 ? '+' : '') + formatNumber(gain) + ' ' + unit + percent + '</small>';
+}
+// Forecast on a disposable, path-cloned state. Calculators must be synchronous and
+// read-only; no purchase, RNG, timers, storage or updateGame calls belong here.
+function projectedPurchase(path, key, count, measure) {
+    const original = game, projected = { ...original };
+    let copy = projected, live = original;
+    for (const part of path) { copy[part] = { ...live[part] }; copy = copy[part]; live = live[part]; }
+    copy[key] = (Number(copy[key]) || 0) + count;
+    try { game = projected; return measure(); }
+    finally { game = original; }
+}
+function purchaseOutput(stage) {
+    const active = stage === 1 ? getClickPower() * getSalvageMultiplier() : stage === 2 ? searchReward(1) : stage === 3 ? engineProfit() : stage === 4 ? fieldReward(false) : coreChannelReward();
+    return { passive: zoneRate(stage), active, ...(stage === 1 ? { population:getPopulation(), crit:game.cityTech.critChance * 8, critPower:2 + game.cityTech.critAmplifier * .5, supply:getSupplyDropValue(), recharge:60-game.cityTech.dropScanner*5 } : {}) };
+}
+function purchaseForecastMarkup(stage, path, key, count = 1) {
+    const before = purchaseOutput(stage), after = projectedPurchase(path,key,count,() => purchaseOutput(stage));
+    const action = {1:'Salvage/gather',2:'Scrap/Train search',3:'Parts profit/new order',4:'Circuits/blue pickup',5:'Cores/channel'}[stage];
+    const units = {passive:ZONES[stage].label+'/sec',active:action,population:'Population',crit:'% critical chance',critPower:'× critical payout',supply:'Salvage/supply drop',recharge:'s recharge'};
+    const lines = Object.keys(before).filter(name => Number.isFinite(before[name]) && Number.isFinite(after[name]) && Math.abs(after[name]-before[name]) > 1e-10)
+        .slice(0,2).map(name => outputChangeMarkup(before[name],after[name],units[name]));
+    return lines.length ? '<span class="actual-output">' + lines.join('<br>') + '</span>' : '';
+}
 function upgradeEffectText(stage, key, def, level) {
     if (def.role === 'AUTOMATION') return level ? '✓ Automation active · kept on reset' : 'OFF → ON · kept on reset';
     if (def.role === 'PREVIOUS ZONE') {
-        const multiplier = Math.pow(1.5, level);
-        return '×' + formatNumber(multiplier) + ' → ×' + formatNumber(multiplier * 1.5) + ' ' + ZONES[stage - 1].label;
+        return purchaseForecastMarkup(stage-1,['stage'+stage+'Upgrades'],key);
     }
-    if (!UPGRADE_CURVES[key]) return '';
-    const pair = (before, after, unit) => formatNumber(before) + ' → ' + formatNumber(after) + ' ' + unit;
+    if (!UPGRADE_CURVES[key]) return purchaseForecastMarkup(stage,[stage===1?'cityTech':'stage'+stage+'Upgrades'],key);
+    const pair = outputChangeMarkup;
     const cadence = (before, after, unit) => pair(Math.round(60000 / before * 10) / 10, Math.round(60000 / after * 10) / 10, unit + '/min');
     let effect;
     if (def.role === 'PRODUCTION') {
         const rate = { 1: getSalvagePerSecond, 2: getScrapPerSecond, 3: getPartsPerSecond, 4: getCircuitsPerSecond, 5: getCoresPerSecond }[stage];
         effect = pair(rate(level), rate(level + 1), ZONES[stage].label + '/sec');
-    } else if (stage === 1) effect = pair(getClickPower(level) * getSalvageMultiplier(), getClickPower(level + 1) * getSalvageMultiplier(), 'Salvage/gather (base)');
+    } else if (stage === 1) effect = pair(getClickPower(level) * getSalvageMultiplier(), getClickPower(level + 1) * getSalvageMultiplier(), 'Salvage/gather · no crit/momentum');
     else if (stage === 2) effect = pair(searchReward(1, level), searchReward(1, level + 1), 'Scrap/Train search') + '<br>' + cadence(searchDuration(level), searchDuration(level + 1), 'searches');
-    else if (stage === 3) effect = pair(engineProfit(level), engineProfit(level + 1), 'Parts profit/order') + '<br>' + cadence(engineDuration(level), engineDuration(level + 1), 'jobs');
+    else if (stage === 3) effect = pair(engineProfit(level), engineProfit(level + 1), 'Parts profit/new order') + '<br>' + cadence(engineDuration(level), engineDuration(level + 1), 'new jobs');
     else if (stage === 4) effect = pair(fieldReward(false, level), fieldReward(false, level + 1), 'Circuits/blue pickup') + '<br>' + cadence(fieldInterval(level), fieldInterval(level + 1), 'spawns');
     else effect = pair(coreChannelReward(level), coreChannelReward(level + 1), 'Cores/channel');
     return effect + '<small class="upgrade-phase">' + upgradePhaseText(key, level) + '</small>';

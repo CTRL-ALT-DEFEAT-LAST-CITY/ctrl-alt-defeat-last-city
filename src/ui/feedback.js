@@ -8,7 +8,7 @@ function normalizeFeedback(saved = {}) {
 }
 function feedbackActivityAllowed() {
     return gameStarted && !document.hidden && !window.LastCityCloud?.isSwitching?.()
-        && !['introModal', 'accountModal', 'feedbackModal', 'loreModal', 'hatchModal', 'petMergeModal'].some(id => el(id)?.open)
+        && !['introModal', 'accountModal', 'feedbackModal', 'renewalModal', 'loreModal', 'hatchModal', 'petMergeModal'].some(id => el(id)?.open)
         && !game.showOfflineModal && !document.querySelector('.offline-modal');
 }
 function feedbackResourceMultiplier() { return !feedbackOfflineCalculation && game.feedback?.boostSeconds > 0 && feedbackActivityAllowed() ? 2 : 1; }
@@ -36,7 +36,7 @@ function renderFeedbackStatus() {
 }
 function openFeedback(source = 'manual') {
     if (document.hidden || window.LastCityCloud?.isSwitching?.() || el('feedbackModal')?.open
-        || ['accountModal', 'loreModal', 'hatchModal', 'petMergeModal'].some(id => el(id)?.open)
+        || ['accountModal', 'renewalModal', 'loreModal', 'hatchModal', 'petMergeModal'].some(id => el(id)?.open)
         || document.querySelector('.offline-modal')) return false;
     feedbackSource = source === 'prompt' ? 'prompt' : 'manual';
     if (el('feedbackTitle')) el('feedbackTitle').textContent = feedbackSource === 'prompt' ? 'Five minutes in — how does it feel?' : 'How is the rebuild going?';

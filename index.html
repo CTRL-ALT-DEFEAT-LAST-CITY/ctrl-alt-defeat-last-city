@@ -38,6 +38,7 @@
                 <button id="soundButton" class="secondary-button" aria-pressed="true">🔊 Sound</button>
                 <button id="ambientButton" class="secondary-button" aria-pressed="false">♫ Ambient off</button>
                 <button id="effectsButton" class="secondary-button" aria-pressed="true">✦ Effects on</button>
+                <button id="storyPopupsButton" class="secondary-button" aria-pressed="true">▤ Story popups on</button>
                 <p>Preferences save with your city. Device reduced-motion settings take priority.</p>
                 <button id="settingsFeedbackButton" class="secondary-button">✉ Give feedback</button>
                 <p id="settingsFeedbackStatus">Share feedback for a one-time ×2 resource boost.</p>
@@ -186,6 +187,7 @@
                 </div>
 
                 <details class="city-renewal"><summary>City renewal · reset rewards</summary>
+                <button id="cityRenewalPreviewButton" class="secondary-button" type="button">Preview what changes</button>
                 <button id="rebirthButton" class="rebirth-button" style="margin-top:20px;">
                     🌅 City Renewal — Build 4 City Centers
                 </button>
@@ -465,6 +467,7 @@
 </main>
 
 <div class="stage-reset-dock">
+    <button id="stageRenewalPreviewButton" class="secondary-button" type="button">Preview reset</button>
     <button id="stageResetButton" class="rebirth-button">🔄 Reset Stage</button>
     <p id="stageResetHint">Reach a stage milestone before resetting.</p>
 </div>
@@ -494,7 +497,7 @@
                 <p class="start-footnote">No account required. You can log in later through Settings and import your guest city.</p>
                 <section id="startSettingsPanel" class="start-inline-panel" aria-labelledby="startSettingsTitle" hidden>
                     <div class="start-panel-heading"><h2 id="startSettingsTitle">Player settings</h2><button data-start-close="startSettingsPanel" aria-label="Close settings">×</button></div>
-                    <div class="start-setting-buttons"><button id="startSoundButton" aria-pressed="true">🔊 Sound on</button><button id="startAmbientButton" aria-pressed="false">♫ Ambient off</button><button id="startEffectsButton" aria-pressed="true">✦ Effects on</button></div>
+                    <div class="start-setting-buttons"><button id="startSoundButton" aria-pressed="true">🔊 Sound on</button><button id="startAmbientButton" aria-pressed="false">♫ Ambient off</button><button id="startEffectsButton" aria-pressed="true">✦ Effects on</button><button id="startStoryPopupsButton" aria-pressed="true">▤ Story popups on</button></div>
                     <p id="startAudioHint">Ambient is optional. Audio begins only after you interact.</p>
                     <p>Reduced-motion preferences are respected. Reset is permanent and requires confirmation.</p>
                     <button id="startResetButton" class="start-danger">Reset all progress</button>
@@ -513,7 +516,7 @@
             <aside class="start-daily" aria-labelledby="dailyRewardTitle"><span class="start-crate" aria-hidden="true">📦</span><div><p class="start-kicker" id="dailyRewardTitle">DAILY SUPPLY CRATE</p><strong id="dailyRewardAmount">250 Salvage</strong><small id="dailyRewardStatus" role="status" aria-live="polite">Optional · no streak to maintain · resets 00:00 UTC</small></div><button id="dailyRewardButton">Claim crate</button></aside>
             <aside class="start-news" aria-label="News and patch notes"><p class="start-kicker">CITY TRANSMISSIONS</p><div class="news-ticker"><div class="news-ticker-track"><span>NEW · Growth phases that matter. Permanent glyphs. A restored skyline.</span><span aria-hidden="true">NEW · Growth phases that matter. Permanent glyphs. A restored skyline.</span></div></div><details><summary>Read patch notes ↗</summary><ul><li>Restored artwork in all five zone themes.</li><li>New start page, opt-in ambient audio and daily supplies.</li><li>Flat → additive → compounding upgrades with fixed prices.</li><li>Existing saves, glyph buffs and earned blueprints are retained.</li></ul></details></aside>
         </div>
-        <footer class="start-footer"><span id="startBuildInfo">v1.0.0-dev · Build 2026.10.05 · Local review</span><span>ONE CITY. ANOTHER CHANCE.</span></footer>
+        <footer class="start-footer"><span id="startBuildInfo">v1.0.1-dev · Build 2026.10.08 · Local review</span><span>ONE CITY. ANOTHER CHANCE.</span></footer>
     </div>
 </dialog>
 
@@ -531,12 +534,21 @@
         </div>
         <footer class="lore-popup-footer">
             <p id="loreArchiveHint">Saved in Stories. Close any time to keep playing.</p>
+            <label class="story-popup-preference"><input id="lorePopupPreference" type="checkbox" checked> Automatically open new chapters</label>
             <div>
                 <button id="loreViewArchive" class="secondary-button">View Stories</button>
                 <button id="loreCloseButton" autofocus>Close &amp; keep playing</button>
             </div>
         </footer>
     </div>
+</dialog>
+
+<dialog id="renewalModal" class="account-modal renewal-modal" aria-labelledby="renewalTitle" aria-describedby="renewalExplanation">
+    <div class="account-heading"><div><p class="eyebrow">REBUILD WITH A CLEAR PLAN</p><h2 id="renewalTitle">City renewal</h2></div></div>
+    <p id="renewalExplanation">The multiplier strengthens your next run. Starting income can drop when unarchived buildings or tools reset. Nothing changes until you confirm.</p>
+    <div id="renewalSummary" class="renewal-columns"></div>
+    <p id="renewalRequirement" role="status"></p>
+    <div class="renewal-actions"><button id="renewalCloseButton" class="secondary-button" type="button">Keep building</button><button id="renewalConfirmButton" class="secondary-button" type="button">Confirm renewal</button></div>
 </dialog>
 
 <dialog id="hatchModal" class="hatch-modal" aria-labelledby="hatchTitle" aria-describedby="hatchStatus">

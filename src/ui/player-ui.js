@@ -3,7 +3,8 @@ let gameStarted = false;
 // Presentation only: category selection never enters the city save or changes prices.
 let purchaseView = 'buildings';
 let playerWalletHeight = 0;
-const PURCHASE_HELP = { buildings: 'Buildings grow your passive income and workforce.', tools: 'Improve active actions, production and automation.', research: 'Permanent upgrades and preservation blueprints for future runs.' };
+let renewalStage = 0, renewalSaveKey = '', renewalReturnFocus = null;
+const PURCHASE_HELP = { buildings: 'Base descriptions explain the building; previews show gains with your current bonuses.', tools: 'Real gains include current bonuses. Gather previews exclude critical hits and momentum.', research: 'Permanent upgrades and preservation blueprints for future runs.' };
 const WALLET_TOKENS = { 1: ["shards", "SHARDS"], 2: ["scrapTokens", "DEPOT TOKENS"], 3: ["partTokens", "FOUNDRY TOKENS"], 4: ["networkTokens", "RELAY TOKENS"], 5: ["ascensionTokens", "CITADEL TOKENS"] };
 function renderPlayerUI() {
     const stage = currentStageView, zone = ZONES[stage], [token, label] = WALLET_TOKENS[stage];
@@ -22,6 +23,7 @@ function renderPlayerUI() {
         document.body.style.setProperty('--wallet-offset', playerWalletHeight + 'px');
     }
     renderPurchaseUI();
+    renderRenewalPreview();
 }
 function scrollPlayerSection() {
     // Scroll a non-sticky anchor: a pinned header's current rect is not its page position.
@@ -56,6 +58,15 @@ function renderPurchaseUI() {
     }
     const action = objectiveDestination();
     if (el('milestoneAction')) el('milestoneAction').textContent = action.label + ' →';
+    if (currentGameMode === 'upgrades' && currentStageView === 1 && purchaseView === 'buildings') {
+        for (const [key,def] of Object.entries(BUILDINGS)) {
+            const mount = el('buildingPreview-' + key);
+            if (!mount) continue;
+            const batch = getBuildingBatch(key), count = Math.max(1,batch.count);
+            const markup = (game.buildings[key] >= (def.max || 1000)) ? 'Fully upgraded' : '<small>' + (batch.count ? 'This purchase ×' + count : 'Next single build') + '</small>' + purchaseForecastMarkup(1,['buildings'],key,count);
+            if (mount.innerHTML !== markup) mount.innerHTML = markup;
+        }
+    }
 }
 function focusPlayerTarget(selector) {
     const target = el('stage' + currentStageView + 'Panel')?.querySelector?.(selector) || document.querySelector(selector);
@@ -74,6 +85,26 @@ function openPurchase(view, selector) {
     if (selector) focusPlayerTarget(selector);
     return true;
 }
+function firstCityGuide() {
+    if (currentStageView !== 1 || game.rebirths > 0 || game.stage2Unlocked || game.buildings.citycenter >= 4) return null;
+    const steps = [
+        {kind:'buildings',key:'scavenger',title:'Build your first Scavenger Camp',label:'Build first Camp',target:'#buyScavenger'},
+        {kind:'tools',key:'sturdyGloves',title:'Improve your gathering tool',label:'Upgrade Salvage Tool',target:'#techUpgrades [data-economy-upgrade="sturdyGloves"]'},
+        {kind:'tools',key:'salvageAccelerator',title:'Start your Production Drive',label:'Upgrade Production Drive',target:'#techUpgrades [data-economy-upgrade="salvageAccelerator"]'},
+        {kind:'buildings',key:'shelter',title:'Build a Crew Shelter',label:'Build Crew Shelter',target:'#buyShelter'},
+        {kind:'buildings',key:'workshop',title:'Build your first Workshop',label:'Build Workshop',target:'#buyWorkshop'}
+    ];
+    const step = game.adventure.progression.beaconModules === 0 ? steps.find(item => !(item.kind==='buildings'?game.buildings:game.cityTech)[item.key]) : null;
+    const cost = step ? step.kind === 'buildings' ? getBuildingCost(step.key) : getTechCost(TECH_UPGRADES[step.key],game.cityTech[step.key]) : beaconCost();
+    if (!step && game.adventure.progression.beaconModules >= 3) return null;
+    const ready = game.salvage >= cost;
+    return { title:step?.title || 'Restore beacon module ' + (game.adventure.progression.beaconModules+1) + ' of 3',
+        detail:formatNumber(Math.min(game.salvage,cost)) + '/' + formatNumber(cost) + ' Salvage · ' + (ready ? 'Ready — open the highlighted action.' : 'Gather or let your production fund this step.'),
+        progress:Math.min(1,Math.max(0,game.salvage/Math.max(1,cost))),
+        mode:ready && step ? 'upgrades' : 'city', view:step?.kind,
+        selector:ready ? step?.target || '[data-action="beacon"]' : '#energyButton',
+        label:ready ? step?.label || 'Install beacon module' : 'Gather for next step' };
+}
 function objectiveDestination() {
     const stage = currentStageView, a = game.adventure, p = a.progression;
     const activity = (label, selector) => ({ label, mode: 'city', selector });
@@ -81,6 +112,8 @@ function objectiveDestination() {
     if (stage < 5 && isZoneUnlocked(stage + 1)) return { label: 'Visit ' + WORLD_THEMES[stage + 1].name, mode: 'city', stage: stage + 1 };
     if (stage < 5 && zoneObjective(stage).ready) return activity('Open next zone', '[data-action="unlock"]');
     if (stage === 1) {
+        const guide = firstCityGuide();
+        if (guide) return guide;
         if (!game.buildings.scavenger) return buildings('Build first Camp', '#buyScavenger');
         if (p.beaconModules < 3 && (game.salvage >= beaconCost() || game.buildings.citycenter >= 4)) return activity('Restore beacon', '[data-action="beacon"]');
         return buildings('Build City Centers', '#buyCitycenter');
@@ -100,9 +133,72 @@ function navigateObjective() {
     if (action.selector) focusPlayerTarget(action.selector);
     return true;
 }
+function renewalSummary(stage) {
+    const city = stage === 1, archivedBoard = preservationOwned(stage), archivedBuildings = city && preservationOwned(1,'buildings');
+    const keep = ['Permanent glyph buffs and research', 'Pets, projects, unlocked zones and stories', 'Existing Shards/tokens and permanent upgrades', 'Preferences, daily crates and feedback reward'];
+    keep.push(city ? archivedBoard ? 'All City upgrades (City Blueprints)' : 'Auto Harvesters' : archivedBoard ? 'All local board upgrades (blueprints)' : 'Automation and previous-zone supply links');
+    if (!city || archivedBuildings) keep.push(city ? 'City buildings and workforce (Foundation Archive)' : 'Production buildings and City workforce');
+    const reset = [city ? 'Salvage balance → ' + (game.rebirthUpgrades.headStart ? '1,000 starter Salvage' : '0') : ZONES[stage].label + ' balance → 0'];
+    if (city && !archivedBuildings) reset.push('City buildings, base output and workforce' + (game.rebirthUpgrades.headStart ? ' (Head Start restores one Camp if needed)' : ''));
+    if (!archivedBoard) reset.push(city ? 'City tools and non-permanent upgrades, except Auto Harvesters' : 'Local production and activity tool levels');
+    if (city) reset.push('Gathering momentum and this-run Salvage total');
+    if (stage === 3) reset.push('Current engine order, assembly pieces and paid input cost — finish delivery first');
+    const count = city ? game.rebirths : game['stage'+stage+'Resets'], base = city ? 2 : 1.5;
+    const before = stageResetMultiplier(stage), after = Math.min(1e100,Math.pow(base,count+1));
+    const gain = ['Permanent ' + ZONES[stage].label + ' renewal multiplier ×' + formatNumber(before) + ' → ×' + formatNumber(after),
+        '+' + (city ? calculateRebirthShards() + ' Salvage Shards' : stageResetReward(stage) + ' local reset Tokens')];
+    if (city && game.rebirthUpgrades.headStart) gain.push('Head Start: 1,000 Salvage and at least one Camp');
+    const fee = city ? cityRenewalFee() : stageResetFee(stage);
+    const requirement = city ? '4 City Centers · ' + cityRenewalMilestone().text : getStageResetInfo(stage).rate + ' Lv ' + stageResetRequiredLevel(stage);
+    return {keep,reset,gain,fee,requirement,ready:city?getRebirthRequirement().check():canStageReset(stage)};
+}
+function clearRenewalPreview() {
+    renewalStage = 0; renewalSaveKey = ''; renewalReturnFocus = null;
+    el('renewalModal')?.close();
+}
+function closeRenewalPreview() {
+    const focus = renewalReturnFocus; clearRenewalPreview();
+    if (focus?.isConnected !== false) focus?.focus?.({preventScroll:true});
+}
+function renderRenewalPreview() {
+    if (!el('renewalModal')?.open || !renewalStage) return;
+    if (window.LastCityCloud?.isSwitching?.() || renewalSaveKey !== getSaveKey()) { clearRenewalPreview(); return; }
+    const summary = renewalSummary(renewalStage);
+    const title = renewalStage === 1 ? 'City renewal' : WORLD_THEMES[renewalStage].name + ' reset';
+    el('renewalTitle').textContent = title;
+    const markup = [['You keep',summary.keep],['You reset',summary.reset],['Your next run gains',summary.gain]].map(([label,items]) => '<section><h3>' + label + '</h3><ul>' + items.map(item=>'<li>' + item + '</li>').join('') + '</ul></section>').join('');
+    if (el('renewalSummary').innerHTML !== markup) el('renewalSummary').innerHTML = markup;
+    el('renewalRequirement').textContent = summary.requirement + (summary.fee ? ' · Funding: '+formatNumber(game[ZONES[renewalStage].currency])+'/'+formatNumber(summary.fee)+' '+ZONES[renewalStage].label : '') + ' · ' + (summary.ready?'Ready':'Requirements not met yet');
+    el('renewalConfirmButton').disabled = !summary.ready;
+    el('renewalConfirmButton').textContent = 'Confirm ' + (renewalStage===1?'City renewal':'zone reset');
+}
+function openRenewalPreview(stage) {
+    if (!gameStarted || !Number.isInteger(stage) || stage<1 || stage>5 || !isZoneUnlocked(stage) || window.LastCityCloud?.isSwitching?.()
+        || ['introModal','accountModal','feedbackModal','renewalModal','loreModal','hatchModal','petMergeModal'].some(id=>el(id)?.open) || game.showOfflineModal || !!document.querySelector('.offline-modal')) return false;
+    if (glyphAuto) stopGlyphAuto('Auto-roll stopped while reviewing renewal.');
+    if (autoHatchSession) stopAutoHatch('Auto hatch stopped while reviewing renewal.');
+    renewalStage=stage; renewalSaveKey=getSaveKey(); renewalReturnFocus=document.activeElement;
+    el('renewalModal').showModal(); renderRenewalPreview();
+    // Native dialog focus can scroll a tall phone layout straight to its footer.
+    el('renewalModal').scrollTop=0;
+    el('renewalCloseButton')?.focus?.({preventScroll:true}); return true;
+}
+function confirmRenewal() {
+    if (!el('renewalModal')?.open || !renewalStage || !gameStarted || renewalSaveKey!==getSaveKey() || window.LastCityCloud?.isSwitching?.()) return false;
+    const stage=renewalStage;
+    if (!renewalSummary(stage).ready) { renderRenewalPreview(); return false; }
+    clearRenewalPreview();
+    if (stage===1) doRebirth(); else resetSimulatorStage(stage);
+    return true;
+}
 function initPlayerUI() {
     document.querySelectorAll('button[data-shop-view]').forEach(button => button.addEventListener('click', () => { if (setPurchaseView(button.dataset.shopView)) scrollPlayerSection(); }));
     el('milestoneAction')?.addEventListener('click', navigateObjective);
+    el('cityRenewalPreviewButton')?.addEventListener('click',()=>openRenewalPreview(1));
+    el('stageRenewalPreviewButton')?.addEventListener('click',()=>openRenewalPreview(currentStageView));
+    el('renewalConfirmButton')?.addEventListener('click',confirmRenewal);
+    el('renewalCloseButton')?.addEventListener('click',closeRenewalPreview);
+    el('renewalModal')?.addEventListener('cancel',event=>{event.preventDefault();closeRenewalPreview();});
     for (let stage=1;stage<=5;stage++) el('nextPurchase' + stage)?.addEventListener('click', event => {
         const button = event.target.closest?.('[data-shop-link]');
         if (button) openPurchase(button.dataset.shopLink,button.dataset.shopTarget);

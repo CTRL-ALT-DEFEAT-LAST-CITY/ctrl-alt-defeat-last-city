@@ -436,6 +436,11 @@ body.hatch-open { overflow: hidden; }
 }
 
 /* Illustrated companions, owned inventory and gold conversions. */
+.pet-atlas-ember { --pet-atlas: url('../../assets/pets/ember.png'); }
+.pet-atlas-moss { --pet-atlas: url('../../assets/pets/moss.png'); }
+.pet-atlas-clockwork { --pet-atlas: url('../../assets/pets/clockwork.png'); }
+.pet-atlas-prism { --pet-atlas: url('../../assets/pets/prism.png'); }
+.pet-atlas-astral { --pet-atlas: url('../../assets/pets/astral.png'); }
 .pet-art {
     display: block;
     width: 128px;

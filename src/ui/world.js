@@ -58,19 +58,43 @@ function checkStoryUnlocks() {
     const fresh = STORY_ENTRIES.filter(entry => !game.story.unlocked[entry.id] && entry.check());
     fresh.forEach(entry => {
         game.story.unlocked[entry.id] = Date.now();
-        if (!pendingLore.includes(entry.id)) pendingLore.push(entry.id);
+        if (game.storyPopupsEnabled === false) game.story.presented[entry.id] = true;
+        else if (!pendingLore.includes(entry.id)) pendingLore.push(entry.id);
     });
     // This timestamp is the discovery time, not a reward or a second gameplay action.
     return fresh;
 }
 function queueUnpresentedLore() {
     for (const entry of unlockedStories()) {
+        if (game.storyPopupsEnabled === false) { game.story.presented[entry.id] = true; continue; }
         if (!game.story.presented[entry.id] && !game.story.read[entry.id] && !pendingLore.includes(entry.id)) pendingLore.push(entry.id);
     }
 }
+function renderStoryPopupPreference() {
+    const enabled = game.storyPopupsEnabled !== false;
+    for (const id of ['storyPopupsButton','startStoryPopupsButton']) if (el(id)) {
+        el(id).textContent = '▤ Story popups ' + (enabled?'on':'off');
+        el(id).setAttribute('aria-pressed',String(enabled));
+        el(id).disabled = !!window.LastCityCloud?.isSwitching?.();
+    }
+    if (el('lorePopupPreference')) { el('lorePopupPreference').checked=enabled; el('lorePopupPreference').disabled=!!window.LastCityCloud?.isSwitching?.(); }
+}
+function setStoryPopupPreference(enabled) {
+    if (typeof enabled !== 'boolean' || window.LastCityCloud?.isSwitching?.()) return false;
+    game.storyPopupsEnabled=enabled;
+    if (!enabled) {
+        // Keep unread chapters available without a catch-up popup barrage later.
+        for (const entry of unlockedStories()) game.story.presented[entry.id]=true;
+        pendingLore=activeLoreId?[activeLoreId]:[]; loreSession++; lorePumpPending=false;
+    }
+    renderStoryPopupPreference(); updateLoreArchiveHint();
+    saveGame(false);
+    if (enabled) scheduleLorePopup();
+    return true;
+}
 function lorePopupBlocked() {
     return !gameStarted || document.hidden || window.LastCityCloud?.isSwitching?.()
-        || ["introModal", "accountModal", "feedbackModal", "hatchModal", "petMergeModal"].some(id => el(id)?.open)
+        || ["introModal", "accountModal", "feedbackModal", "renewalModal", "hatchModal", "petMergeModal"].some(id => el(id)?.open)
         || game.showOfflineModal || !!document.querySelector(".offline-modal");
 }
 function clearLorePopupSession() {
@@ -125,11 +149,13 @@ function maybeShowLorePopup() {
         return;
     }
     if (el("loreModal")?.open) { updateLoreArchiveHint(); return; }
+    if (game.storyPopupsEnabled === false) return;
     pendingLore = pendingLore.filter(id => game.story.unlocked[id] && !game.story.presented[id] && !game.story.read[id]);
     if (lorePopupBlocked() || currentGameMode === "stories" || !pendingLore.length) return;
     openLorePopup(pendingLore[0]);
 }
 function scheduleLorePopup() {
+    if (game.storyPopupsEnabled === false) return;
     if (lorePumpPending || (!pendingLore.length && !activeLoreId)) return;
     const session = loreSession;
     lorePumpPending = true;
@@ -184,6 +210,7 @@ function renderStoryArchive() {
     if (panel.innerHTML !== markup) panel.innerHTML = markup;
 }
 function renderWorldUI() {
+    renderStoryPopupPreference();
     const theme = WORLD_THEMES[currentStageView], unread = unreadStories(), latest = unread[unread.length - 1];
     document.body.dataset.zone = currentStageView;
     stageTabs.forEach(tab => tab.setAttribute("aria-pressed", String(Number(tab.dataset.stage) === currentStageView)));
@@ -206,6 +233,8 @@ function renderWorldUI() {
 function initWorldUI() {
     if (worldUIReady) return;
     worldUIReady = true;
+    for (const id of ['storyPopupsButton','startStoryPopupsButton']) el(id)?.addEventListener('click',()=>setStoryPopupPreference(game.storyPopupsEnabled === false));
+    el('lorePopupPreference')?.addEventListener('change',event=>setStoryPopupPreference(event.target.checked));
     // Use the same destination names as the zone selector and narrative.
     for (let stage = 1; stage < 5; stage++) ZONES[stage].next = WORLD_THEMES[stage + 1].name;
     document.addEventListener?.("click", event => {

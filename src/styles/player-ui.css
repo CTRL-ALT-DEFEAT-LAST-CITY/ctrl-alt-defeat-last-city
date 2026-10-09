@@ -376,3 +376,25 @@ body:not([data-shop-view="research"]) #preservationPanel { display: none !import
     .zone-scene { padding: 14px; }
 }
 @media (max-width:520px) { .purchase-heading { align-items: baseline; flex-wrap: wrap; gap: 4px; } .purchase-heading h2 { font-size: 21px; } .wallet-luck { min-height: 0; } }
+.upgrade-gain { display: block; color: #94e4bc; font-size: 12px; line-height: 1.5; margin-top: 3px; }
+.actual-output { display: block; color: #dceafa; font-size: 13px; line-height: 1.6; }
+.building-preview { margin: 10px 0; font-size: 13px; }
+.building-preview > small { display: block; color: #b9c8dc; font-size: 11px; margin-bottom: 4px; }
+.actual-output .upgrade-gain { font-size: 12px; }
+.city-renewal > .secondary-button { margin-top: 10px; min-height: 44px; width: 100%; }
+.stage-reset-dock > .secondary-button { min-height: 44px; width: 100%; margin-bottom: 8px; }
+.renewal-modal { width: min(800px,calc(100vw - 28px)); max-height: calc(100dvh - 28px); overflow-y: auto; }
+body:has(#renewalModal[open]) { overflow: hidden; }
+.renewal-modal > p { color: #cbd9e8; line-height: 1.6; font-size: 13px; }
+.renewal-columns { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin-top: 16px; }
+.renewal-columns section { padding: 14px; border: 1px solid #45546b; background: #101d2d; border-radius: 10px; }
+.renewal-columns h3 { font-size: 16px; margin: 0 0 10px; }
+.renewal-columns ul { padding-left: 18px; margin: 0; color: #c3d2e4; font-size: 13px; line-height: 1.6; }
+.renewal-columns li + li { margin-top: 8px; }
+.renewal-columns section:last-child { border-color: #4e8b71; }
+.renewal-actions { position: sticky; bottom: -24px; display: flex; gap: 10px; flex-wrap: wrap; padding: 12px 0; background: #101827; }
+.renewal-actions button { flex: 1; min-height: 44px; }
+.renewal-actions button:last-child:not(:disabled) { background: #254b3b; color: #d2ffe7; border-color: #67b990; }
+.story-popup-preference { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 12px; color: #c3d2e4; }
+.story-popup-preference input { width: 18px; height: 18px; flex-shrink: 0; accent-color: var(--world-color); }
+@media(max-width:680px) { .renewal-columns { grid-template-columns: 1fr; } .renewal-modal { padding: 18px; } .renewal-actions { bottom: -18px; } .renewal-columns li + li { margin-top: 4px; } }

@@ -34,6 +34,7 @@ const defaultGame = {
     soundEnabled: true,
     ambientEnabled: false,
     effectsEnabled: true,
+    storyPopupsEnabled: true,
     dailyReward: normalizeDailyReward(),
     feedback: normalizeFeedback(),
     lastStageView: 1,
@@ -540,6 +541,11 @@ function setupBuildingButtons() {
             return;
         }
         btn.addEventListener("click", () => buyBuilding(type));
+        const card = btn.closest?.('.building-card');
+        if (card && !el('buildingPreview-' + type)) {
+            const preview = document.createElement('div'); preview.id = 'buildingPreview-' + type; preview.className = 'building-preview';
+            card.insertBefore(preview,btn);
+        }
     });
 }
 
@@ -819,12 +825,9 @@ function claimContract(key) {
     saveGame(false);
 }
 
-rebirthButton.addEventListener("click", doRebirth);
+rebirthButton.addEventListener("click", () => openRenewalPreview(1));
 stageResetButton.addEventListener("click", function () {
-    if (currentStageView === 2) doStage2Reset();
-    else if (currentStageView === 3) doStage3Reset();
-    else if (currentStageView === 4) doStage4Reset();
-    else if (currentStageView === 5) doStage5Reset();
+    openRenewalPreview(currentStageView);
 });
 
 // =============================================
@@ -1147,7 +1150,7 @@ function renderTutorialHint() {
     if (!hint) return;
     if (currentGameMode === "stats") hint.textContent = "Your lifetime record survives every Rebirth.";
     else if (currentGameMode === "stories") hint.textContent = "Recover stories through zone milestones. Your archive survives city renewals.";
-    else if (currentGameMode === "glyphs") hint.textContent = "Your best glyph activates automatically. Improve Luck for rarer discoveries; duplicates become Essence.";
+    else if (currentGameMode === "glyphs") hint.textContent = "Every glyph copy contributes until its cap. Buffs multiply across collections and remain permanent. Luck improves draw odds.";
     else if (currentGameMode === "upgrades") hint.textContent = "Ready cards show what improves next. Auto Harvesters survive renewal; production tools reset. Shard upgrades are permanent.";
     else if (currentGameMode === "companions") hint.textContent = "Buy eggs with this zone's currency. Equip up to 3 companions; pets survive resets.";
     else if (game.totalClicks < 5) hint.textContent = "Tap Gather Salvage to begin rebuilding.";
@@ -1248,9 +1251,10 @@ function updateMilestone() {
     if (!title || !detail || !bar || !percent) return;
     const objective = zoneObjective(currentStageView);
     const complete = currentStageView < 5 ? isZoneUnlocked(currentStageView + 1) : game.adventure.bossDefeated;
-    const progress = complete ? 100 : objective.progress * 100;
-    title.textContent = complete ? ZONES[currentStageView].name + " — objective complete" : ZONES[currentStageView].quest;
-    detail.textContent = objective.detail;
+    const guide = complete ? null : firstCityGuide();
+    const progress = complete ? 100 : (guide ? guide.progress : objective.progress) * 100;
+    title.textContent = complete ? ZONES[currentStageView].name + " — objective complete" : guide?.title || ZONES[currentStageView].quest;
+    detail.textContent = guide ? guide.detail + ' Zone goal: 4 City Centers + 3 beacon modules.' : objective.detail;
     const rounded = Math.floor(progress);
     bar.style.width = `${rounded}%`;
     percent.textContent = `${rounded}%`;
@@ -1307,7 +1311,7 @@ function renderPurchaseOutlook() {
         mount.innerHTML = '<div id="nextPurchaseInfo' + stage + '" class="next-purchase-info"></div><button id="nextPurchaseLink' + stage + '" type="button" class="secondary-button"></button>';
         mount.dataset.navigationMounted = 'yes';
     }
-    const markup = next ? `<p class="eyebrow">NEXT INVESTMENT</p><strong>${next.name}</strong>${purchaseProgressMarkup(balance, next.cost)}<small>${balance >= next.cost ? "Ready for purchase" : formatNumber(next.cost - balance) + " " + ZONES[stage].label + " to go"}</small>${purchaseEtaMarkup(balance,next.cost,stage)}`
+    const markup = next ? `<p class="eyebrow">LOWEST-COST OPTION</p><strong>${next.name}</strong>${purchaseProgressMarkup(balance, next.cost)}<small>${balance >= next.cost ? "Ready for purchase" : formatNumber(next.cost - balance) + " " + ZONES[stage].label + " to go"}</small>${purchaseEtaMarkup(balance,next.cost,stage)}`
         : '<p class="eyebrow">UPGRADE STATUS</p><strong>All resource upgrades complete</strong><small>Keep building your legacy.</small>';
     const info = el('nextPurchaseInfo' + stage), link = el('nextPurchaseLink' + stage);
     if (info && info.innerHTML !== markup) info.innerHTML = markup;
@@ -1341,6 +1345,12 @@ function renderRebirthUpgrades() {
                 <span>${maxed ? "MAXED" : formatNumber(cost) + " 💎"}</span>
             </div>
         `;
+        if (!maxed) {
+            const effect = key === 'headStart' ? 'Next renewal: 1,000 starter Salvage and at least one Camp.'
+                : key === 'cheapBuild' ? outputChangeMarkup(getBuildingCost('scavenger'),projectedPurchase(['rebirthUpgrades'],key,1,()=>getBuildingCost('scavenger')),'Salvage for next Camp')
+                : purchaseForecastMarkup(1,['rebirthUpgrades'],key);
+            if (effect) btn.innerHTML += '<div class="upgrade-effect">' + effect + '</div>';
+        }
         btn.innerHTML += purchaseProgressMarkup(game.shards, cost, maxed);
         if (!maxed) btn.onclick = () => buyRebirthUpgrade(key);
         if (!btn.parentNode) container.appendChild(btn);
@@ -1360,7 +1370,7 @@ function renderTechUpgrades() {
         btn.dataset.economyUpgrade = key;
         btn.className = "upgrade-card tech-card" + (maxed ? " maxed" : "");
         btn.disabled = maxed || !canAfford;
-        btn.innerHTML = `<div class="tech-icon">${def.icon}</div><small class="upgrade-role">${def.role}</small><div class="upgrade-name">${def.name}</div><div class="upgrade-desc">${def.desc}</div><div class="upgrade-effect">${maxed ? "Fully upgraded" : key === "salvageMagnet" ? level + " → " + (level + 1) + " automatic gathers/sec" : key === "dropScanner" ? (60 - level * 5) + "s → " + (55 - level * 5) + "s supply recharge" : upgradeEffectText(1, key, def, level)}</div><div class="upgrade-meta"><span>Lv ${level}/${def.max}</span><span>${maxed ? "MAXED" : formatNumber(cost) + " ⚙️"}</span></div>`;
+        btn.innerHTML = `<div class="tech-icon">${def.icon}</div><small class="upgrade-role">${def.role}</small><div class="upgrade-name">${def.name}</div><div class="upgrade-desc">${def.desc}</div><div class="upgrade-effect">${maxed ? "Fully upgraded" : key === "salvageMagnet" ? purchaseForecastMarkup(1,['cityTech'],key) + '<small>' + level + ' → ' + (level+1) + ' automatic gathers/sec</small>' : upgradeEffectText(1, key, def, level)}</div><div class="upgrade-meta"><span>Lv ${level}/${def.max}</span><span>${maxed ? "MAXED" : formatNumber(cost) + " ⚙️"}</span></div>`;
         btn.innerHTML += purchaseProgressMarkup(game.salvage, cost, maxed);
         if (!maxed) btn.innerHTML += purchaseEtaMarkup(game.salvage,cost,1);
         if (!maxed) btn.onclick = () => buyTechUpgrade(key);
@@ -1426,6 +1436,11 @@ function renderResetUpgrades() {
                     <span>${maxed ? "MAXED" : formatNumber(cost) + " 🪙"}</span>
                 </div>
             `;
+            if (!maxed) {
+                const previewStage = ({salvageBoost2:1,scrapBoost3:2,partBoost4:3,circuitBoost:4})[key] || Number(stage);
+                const effect = purchaseForecastMarkup(previewStage,['stage'+stage+'ResetUpgrades'],key);
+                if (effect) btn.innerHTML += '<div class="upgrade-effect">' + effect + '</div>';
+            }
             btn.innerHTML += purchaseProgressMarkup(cfg.tokens, cost, maxed, bossLocked);
             if (!maxed) btn.onclick = () => buyResetUpgrade(parseInt(stage), key);
             if (!btn.parentNode) container.appendChild(btn);
@@ -1463,6 +1478,7 @@ function saveGame(showMsg = true) {
 }
 
 function loadGame(snapshot) {
+    clearRenewalPreview();
     clearFeedbackSession();
     startupSaveAvailable = false;
     dailyClaimError = '';
@@ -1486,6 +1502,7 @@ function loadGame(snapshot) {
             ...defaultGame,
             ...loaded,
             ambientEnabled: loaded.ambientEnabled === true,
+            storyPopupsEnabled: loaded.storyPopupsEnabled !== false,
             dailyReward: normalizeDailyReward(loaded.dailyReward),
             feedback: normalizeFeedback(loaded.feedback),
             lastStageView: Number.isInteger(loaded.lastStageView) && loaded.lastStageView >= 1 && loaded.lastStageView <= 5
@@ -1529,6 +1546,7 @@ function resetAllProgress() {
     if (!confirm("Reset EVERYTHING? This cannot be undone.")) return;
     clearFeedbackSession();
     clearLorePopupSession();
+    clearRenewalPreview();
     if (glyphAuto) stopGlyphAuto("Auto-roll stopped by full reset.");
     glyphManualReadyAt = 0;
     glyphMessage = "Auto-roll is off. Choose when to spend your currency.";

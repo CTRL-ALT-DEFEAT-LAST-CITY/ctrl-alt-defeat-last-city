@@ -80,7 +80,9 @@ function unequipPet(stage, id) {
 function petArtMarkup(id) {
     const pet = petInfo(id);
     if (!pet) return "";
-    return `<span class="pet-art${pet.gold ? " gold-art" : ""}" role="img" aria-label="${pet.name}" style="--pet-atlas:url('assets/pets/${PET_ATLASES[pet.stage]}.png');--pet-x:${pet.rarity % 3 * 50}%;--pet-y:${Math.floor(pet.rarity / 3) * 100}%"></span>`;
+    // Atlas URLs belong in the stylesheet, where their relative base is explicit.
+    // A relative URL in a custom property resolves against the consuming CSS file.
+    return `<span class="pet-art pet-atlas-${PET_ATLASES[pet.stage]}${pet.gold ? " gold-art" : ""}" role="img" aria-label="${pet.name}" style="--pet-x:${pet.rarity % 3 * 50}%;--pet-y:${Math.floor(pet.rarity / 3) * 100}%"></span>`;
 }
 function equippedPetsMarkup(stage) {
     const slots = game.adventure.equipped[stage] || [];
