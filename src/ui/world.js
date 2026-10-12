@@ -124,6 +124,7 @@ function openLorePopup(id) {
     el("loreArtwork").setAttribute("aria-label", WORLD_THEMES[entry.stage].name + " landscape");
     updateLoreArchiveHint();
     modal.showModal();
+    if(typeof terminalModalOpened==='function')terminalModalOpened(modal);
     el("loreText").parentElement.scrollTop = 0;
     // Remember the presentation immediately, including refreshes while reading.
     game.story.presented[id] = true;

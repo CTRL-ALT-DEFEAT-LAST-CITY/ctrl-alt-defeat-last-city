@@ -180,6 +180,7 @@ function openRenewalPreview(stage) {
     if (autoHatchSession) stopAutoHatch('Auto hatch stopped while reviewing renewal.');
     renewalStage=stage; renewalSaveKey=getSaveKey(); renewalReturnFocus=document.activeElement;
     el('renewalModal').showModal(); renderRenewalPreview();
+    if(typeof terminalModalOpened==='function')terminalModalOpened(el('renewalModal'));
     // Native dialog focus can scroll a tall phone layout straight to its footer.
     el('renewalModal').scrollTop=0;
     el('renewalCloseButton')?.focus?.({preventScroll:true}); return true;

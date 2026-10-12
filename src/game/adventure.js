@@ -127,6 +127,7 @@ function startHatchReveal(stage, rarity, id) {
     el("skipHatchAnimations").checked = !!game.skipHatchAnimations;
     document.body.classList.add("hatch-open");
     modal.showModal();
+    if(typeof terminalModalOpened==='function')terminalModalOpened(modal);
     modal.scrollTop=0;el('hatchSkipButton')?.focus?.({preventScroll:true});
     animateVfx(modal, [{ opacity: .5, transform: "scale(.97)" }, { opacity: 1, transform: "scale(1)" }]);
     syncAutoHatchControls();

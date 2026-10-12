@@ -843,7 +843,7 @@ stageTabs.forEach(tab => {
         const stage = parseInt(tab.dataset.stage);
         if (!isZoneUnlocked(stage)) {
             pulseVfx(tab, "rgba(255,160,130,.55)");
-            return showNotification(ZONES[stage - 1].quest);
+            return showNotification('ERROR: Zone locked. '+ZONES[stage - 1].quest);
         }
         if (stage === currentStageView) return;
 
@@ -939,6 +939,7 @@ function showOfflineModal() {
         </div>
     `;
     document.body.appendChild(modal);
+    if(typeof terminalPowerCycle==='function')terminalPowerCycle(modal.querySelector('.offline-modal-content'));
     game.showOfflineModal = false;
 }
 
@@ -1575,9 +1576,11 @@ function resetAllProgress() {
     stageTabs.forEach(tab => tab.classList.toggle("active", tab.dataset.stage === "1"));
     stagePanels.forEach(panel => panel.classList.toggle("active", panel.id === "stage1Panel"));
     clearVfx();
+    clearTerminalSession();
     switchGameMode("city");
     saveGame(false);
     showNotification("Full reset.");
+    if(typeof terminalPowerCycle==='function')terminalPowerCycle(el('stage1Panel'));
 }
 resetButton.addEventListener("click", resetAllProgress);
 
@@ -1594,6 +1597,7 @@ function formatNumber(value) {
 }
 
 function showFloatingGain(anchor, text) {
+    if (typeof terminalPrintGain === 'function') return terminalPrintGain(anchor,text);
     const layer = el("fxLayer");
     if (!layer || !anchor || !canPlayVfx()) return;
     const rect = anchor.getBoundingClientRect();
@@ -1703,7 +1707,7 @@ function playSfx(type = "click") {
         sfxLastTimes.set(type,now);
         audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
         if (audioContext.state === "suspended") audioContext.resume()?.catch?.(()=>{});
-        const notes = { click:[110,.12,'triangle'],ui:[440,.035,'sine'],beep:[660,.055,'sine'],failure:[170,.12,'triangle'],boot:[240,.16,'sine'],travel:[190,.25,'sine'],rebirth:[55,.5,'triangle'],hatch:[261.63,.45,'sine'],build:[140,.14,'triangle'],upgrade:[180,.16,'triangle'],critical:[900,.14,'sine'],dispatch:[500,.18,'triangle'] };
+        const notes = { click:[110,.12,'triangle'],clack:[95,.055,'square'],ui:[440,.035,'sine'],beep:[660,.055,'sine'],failure:[85,.1,'sawtooth'],boot:[240,.16,'sine'],travel:[190,.25,'sine'],rebirth:[55,.5,'triangle'],hatch:[261.63,.45,'sine'],build:[140,.14,'triangle'],upgrade:[180,.16,'triangle'],critical:[900,.14,'sine'],dispatch:[500,.18,'triangle'] };
         const [frequency, duration, wave] = notes[type] || notes.click;
         const oscillator = audioContext.createOscillator();
         const gain = audioContext.createGain();

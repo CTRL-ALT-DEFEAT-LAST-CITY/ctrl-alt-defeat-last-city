@@ -32,7 +32,10 @@
     function openAccount() {
         if (el('feedbackModal')?.open) return;
         if (el('playerSettings')) el('playerSettings').open = false;
-        if (!el("accountModal").open) el("accountModal").showModal();
+        if (!el("accountModal").open) {
+            el("accountModal").showModal();
+            if(typeof terminalModalOpened==='function')terminalModalOpened(el('accountModal'));
+        }
         if (!owner && !recovering && !el("accountMessage").textContent) message(ACCOUNT_GUIDANCE);
     }
     function render() {

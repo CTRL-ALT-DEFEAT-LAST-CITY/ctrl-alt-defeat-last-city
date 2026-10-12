@@ -10,6 +10,7 @@ function canPlayVfx() {
         && !window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
 }
 function clearVfx() {
+    if (typeof clearTerminalPresentation === 'function') clearTerminalPresentation();
     finishTerminalBoot(false);
     for (const [node, timer] of liveVfx) { clearTimeout(timer); node.remove(); }
     liveVfx.clear();
@@ -84,6 +85,7 @@ function animateNavigation(tab) {
     const panel = currentGameMode === "stats" ? el("statsPanel")
         : currentGameMode === "companions" ? el("companionPanel") : currentGameMode === "stories" ? el("storyPanel") : currentGameMode === "glyphs" ? el("glyphPanel") : el("stage" + currentStageView + "Panel");
     animateViewEntry(panel);
+    if(typeof terminalPowerCycle==='function' && !tab?.dataset?.stage)terminalPowerCycle(panel);
     pulseVfx(tab);
 }
 function pulseVfx(node, color = "rgba(94,234,255,.45)") {
@@ -112,7 +114,7 @@ function initVfx() {
     document.addEventListener?.("click", event => {
         const button = event.target.closest?.("button");
         if (!button || button.disabled || button.closest?.("#accountModal")) return;
-        if (typeof playSfx === 'function' && button.id !== 'energyButton' && button.id !== 'mobileGather') playSfx('ui');
+        if (typeof playSfx === 'function' && button.id !== 'energyButton' && button.id !== 'mobileGather') playSfx('clack');
         if (!canPlayVfx()) return;
         if (button.closest?.("dialog")) { pulseVfx(button); return; }
         const rect = (button.id==='energyButton' && gatherFeedbackAnchor ? gatherFeedbackAnchor : button).getBoundingClientRect();
@@ -136,6 +138,7 @@ const TERMINAL_HELP = {
     5: ['Celestial Citadel','Cores fund the reactor, tools and Astral Eggs. Ascension Tokens buy permanent research.', 'Channel energy, disable the three shields, then charge and fire the cannon. Each successful shot reduces Guardian health. Reclaim the reactor, then buy The Last City in Research.', 'Core Drive builds passive production; Reactor Focus improves channel yield. Glyph buffs and pets remain permanent across resets.']
 };
 function clearTerminalSession() {
+    if (typeof clearTerminalPresentation === 'function') clearTerminalPresentation(true);
     finishTerminalBoot(false,false);clearTimeout(terminalToastTimer);terminalToastToken++;terminalToastTimer=null;
     terminalWalletValue=null;terminalWalletStage=0;terminalProgressSavedAt=0;
     el('notification')?.classList.remove('show');
@@ -178,13 +181,21 @@ function startTerminalBoot(kind = 'startup') {
     if(typeof autoHatchSession!=='undefined' && autoHatchSession)stopAutoHatch('Auto hatch paused for terminal boot.');
     el('terminalBootSkip')?.focus?.({preventScroll:true});
     const text='> ASHFALL TERMINAL v2.189...\n> CONNECTING TO RELAY...\n> SIGNAL ACQUIRED.';
-    let index=0;
+    let index=0, glitched=false;
+    const glitchBoot=typeof terminalPresentationRandom==='function' && terminalPresentationRandom()<.1;
+    delete modal.dataset.glitch;
+    if(typeof terminalPowerCycle==='function')terminalPowerCycle(null,modal);
     playSfx(kind==='renewal'?'rebirth':'boot');
     const step=()=>{
         if (token!==terminalBootToken) return;
         if (!canPlayVfx() || terminalBootKey!==getSaveKey() || window.LastCityCloud?.isSwitching?.()) return finishTerminalBoot(false);
         el('terminalBootText').textContent=text.slice(0,++index);
         el('terminalBootProgress').value=index/text.length*100;
+        if(glitchBoot && !glitched && index===40){
+            glitched=true;modal.dataset.glitch='true';
+            el('terminalBootText').textContent+='\n> SIGNAL NOISE / RETRY...';
+            terminalBootTimer=setTimeout(()=>{delete modal.dataset.glitch;step();},160);return;
+        }
         if(index<text.length) terminalBootTimer=setTimeout(step,18);
         else terminalBootTimer=setTimeout(()=>{if(token===terminalBootToken)finishTerminalBoot();},240);
     };
@@ -222,9 +233,10 @@ function terminalGather(critical,anchor=el('energyButton')) {
 function terminalPurchase(anchor=document.activeElement) {
     anchor?.classList.remove?.('navigation-target');
     if(anchor?.dataset)delete anchor.dataset.navigationTarget;
+    if(typeof terminalPurchaseReceipt==='function')terminalPurchaseReceipt(anchor);
     const card=anchor?.closest?.('.building-card,.upgrade-card,.infrastructure-grid button,.preservation-card') || anchor;
     if(!card || !canPlayVfx())return;
-    animateVfx(card,[{transform:'scale(1.035)',boxShadow:'0 0 24px var(--world-color)'},{transform:'scale(1)',boxShadow:'0 0 0 transparent'}],{duration:270});
+    animateVfx(card,[{transform:'translateY(2px)',borderColor:'var(--world-color)'},{transform:'translateY(0)',borderColor:'var(--world-color)'}],{duration:200,delay:100});
     const rect=card.getBoundingClientRect();
     for(let i=0;i<6;i++){
         const dust=document.createElement('i');dust.className='terminal-dust';
@@ -253,6 +265,8 @@ function clearHatchEffects() {
 function terminalZoneTravel(from,to) {
     if(from===to)return;
     playSfx('travel');
+    if(typeof terminalPowerCycle==='function')terminalPowerCycle(el('stage'+to+'Panel'));
+    if(typeof terminalLog==='function')terminalLog('Relay connected: '+ZONES[to].name,'ok');
     const direction=to>from?1:-1;
     animateVfx(el('worldBanner'),[{opacity:.3,transform:'translateX('+direction*22+'px)'},{opacity:1,transform:'translateX(0)'}],{duration:480});
     const wave=document.createElement('i');wave.className='terminal-zone-wave';wave.style.setProperty('--travel-direction',direction);
@@ -265,7 +279,8 @@ function terminalTransmission(message) {
     node.setAttribute('aria-label',all);node.setAttribute('aria-live','off');
     if(el('transmissionAnnouncer'))el('transmissionAnnouncer').textContent=all;
     node.textContent=animated?'':all;node.classList.add('show');
-    const error=/not enough|failed|unavailable|requirements not met|cannot|recipe reset/i.test(all);
+    const error=/^ERROR:|^Need |^Complete .*first|not enough|failed|unavailable|requirements not met|cannot|recipe reset/i.test(all);
+    if(typeof terminalRecordStatus==='function')terminalRecordStatus(all,error);
     playSfx(error?'failure':'beep');
     const step=()=>{
         if(token!==terminalToastToken)return;
@@ -279,8 +294,9 @@ function openZoneHelp() {
     if(!gameStarted || window.LastCityCloud?.isSwitching?.() || ['terminalBootModal','introModal','accountModal','feedbackModal','loreModal','hatchModal','petMergeModal','renewalModal'].some(id=>el(id)?.open) || game.showOfflineModal)return false;
     if(typeof glyphAuto!=='undefined' && glyphAuto)stopGlyphAuto('Auto-roll paused for the field manual.');
     if(typeof autoHatchSession!=='undefined' && autoHatchSession)stopAutoHatch('Auto hatch paused for the field manual.');
-    const help=TERMINAL_HELP[currentStageView];el('zoneHelpTitle').textContent=help[0]+' · Field manual';
-    el('zoneHelpContent').innerHTML=help.slice(1).map((text,i)=>'<section><h3>'+['Currencies','How this zone works','Your next run'][i]+'</h3><p>'+text+'</p></section>').join('');
+    if(typeof renderTerminalManual==='function')renderTerminalManual('zones');
+    else {const help=TERMINAL_HELP[currentStageView];el('zoneHelpTitle').textContent=help[0]+' · Field manual';
+    el('zoneHelpContent').innerHTML=help.slice(1).map((text,i)=>'<section><h3>'+['Currencies','How this zone works','Your next run'][i]+'</h3><p>'+text+'</p></section>').join('');}
     el('zoneHelpModal').showModal();el('zoneHelpModal').scrollTop=0;el('zoneHelpClose')?.focus?.({preventScroll:true});return true;
 }
 function closeZoneHelp() {el('zoneHelpModal')?.close?.();el('zoneHelpButton')?.focus?.({preventScroll:true});}
@@ -294,6 +310,7 @@ function refreshTerminalCloudProgress() {
     const pending=state==='syncing' || /^(Saving to cloud|Loading your cloud city)/.test(message);
     terminalProgress('cloudActionProgress',state==='saved'?100:0,pending?'Cloud transfer in progress':state==='error'?'Cloud unavailable · device save retained':state==='saved'?'Cloud sync complete':'Cloud sync status',pending);
     if(el('cloudActionProgress'))el('cloudActionProgress').hidden=!pending && !['saved','error','conflict'].includes(state);
+    if(typeof terminalTransfer==='function')terminalTransfer('cloudTransferStream',pending,'CLOUD LINK / PACKETS');
 }
 function refreshTerminalUI() {
     if(el('terminalBootModal')?.open && (terminalBootKey!==getSaveKey() || window.LastCityCloud?.isSwitching?.()))finishTerminalBoot(false);
@@ -302,6 +319,7 @@ function refreshTerminalUI() {
         const spent=value<terminalWalletValue;
         if(spent)animateVfx(el('walletBalance'),[{color:'#ff8490',textShadow:'0 0 16px #ff849088'},{color:'inherit',textShadow:'none'}],{duration:420});
         else pulseVfx(el('walletBalance'),'#ffbd7244');
+        if(typeof terminalPrintCounter==='function')terminalPrintCounter(el('walletBalance'));
     }
     terminalWalletStage=stage;terminalWalletValue=value;
     const a=game.adventure,p=a.progression,now=Date.now();
@@ -315,6 +333,7 @@ function refreshTerminalUI() {
     terminalProgress('saveActionProgress',terminalProgressSavedAt?100:0,terminalProgressSavedAt?'Saved on this device':'Device save status');
     refreshTerminalCloudProgress();
     refreshTerminalTooltips();
+    if(typeof refreshTerminalPersonality==='function')refreshTerminalPersonality();
 }
 const TERMINAL_ICON_PATHS={
     city:'M3 21V10h6v11m0-17h6v17m0-13h6v13M1 21h22M11 7h2m-2 4h2m-2 4h2M5 13h2m10-2h2m-2 4h2',
@@ -379,10 +398,11 @@ function refreshTerminalTooltips() {
         const detail=descriptions[n.id] || (def?def.name+' — '+def.desc+'. Buy at the displayed price; the gain preview includes current bonuses.':null) || actions[n.dataset.action] || pets[n.dataset.petAction] || (statLabel?statLabel+'. Current value recorded for this city.':n.matches('.pet-art')?'Companion artwork. Each equipped copy adds its stated resource power.':text.slice(0,300));
         if(n.dataset.mode)n.title={city:'Play the current zone activity.',upgrades:'Browse Buildings, Tools and permanent Research.',glyphs:'Draw capped permanent glyphs and improve glyph research.',companions:'Hatch, equip and merge companion copies.',stories:'Read and replay earned chapters without losing progression.',stats:'Inspect lifetime records and earned badges.'}[n.dataset.mode];
         else if(n.dataset.stage)n.title=n.classList.contains('locked')?'Locked: '+ZONES[Math.max(1,Number(n.dataset.stage)-1)].quest:'Travel to '+ZONES[Number(n.dataset.stage)].name;
-        else if(detail)n.title=detail+(n.classList.contains('maxed')?' — Fully upgraded.':n.disabled?' — Unavailable until the displayed funding or requirement is met.':'');
+        else if(detail)n.title=(detail.length>115?detail.slice(0,110).replace(/\s+\S*$/,'')+'… See Manual.':detail)+(n.classList.contains('maxed')?' — Maxed.':n.disabled?' — Check requirements.':'');
     }
 }
 function initTerminalUI() {
+    if(typeof initTerminalPersonality==='function')initTerminalPersonality();
     el('terminalBootSkip')?.addEventListener('click',()=>finishTerminalBoot());
     el('terminalBootModal')?.addEventListener('cancel',event=>{event.preventDefault();finishTerminalBoot();});
     el('zoneHelpButton')?.addEventListener('click',openZoneHelp);

@@ -50,6 +50,7 @@ function openFeedback(source = 'manual') {
     if (el('playerSettings')) el('playerSettings').open = false;
     renderFeedbackStatus();
     el('feedbackModal').showModal();
+    if(typeof terminalModalOpened==='function')terminalModalOpened(el('feedbackModal'));
     (record ? el('feedbackSubmitButton') : el('feedbackText'))?.focus?.();
     return true;
 }

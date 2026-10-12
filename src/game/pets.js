@@ -214,6 +214,7 @@ function openPetMerge(id) {
     document.body.classList.add("pet-merge-open");
     renderPetMerge();
     el("petMergeModal").showModal();
+    if(typeof terminalModalOpened==='function')terminalModalOpened(el('petMergeModal'));
     animateVfx(el("petMergeModal"), [{ opacity: .5, transform: "scale(.97)" }, { opacity: 1, transform: "scale(1)" }]);
 }
 function renderPetMerge() {

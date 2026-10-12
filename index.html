@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="src/styles/cloud-save.css?v=google-1">
     <link rel="stylesheet" href="src/styles/player-ui.css">
     <link rel="stylesheet" href="src/styles/startup.css">
+    <link rel="stylesheet" href="src/styles/terminal.css">
 </head>
 <body>
 
@@ -39,6 +40,7 @@
                 <button id="soundButton" class="secondary-button" aria-pressed="true">🔊 Sound</button>
                 <button id="ambientButton" class="secondary-button" aria-pressed="false">♫ Ambient off</button>
                 <button id="effectsButton" class="secondary-button" aria-pressed="true">✦ Effects on</button>
+                <button id="terminalCursorButton" class="secondary-button" aria-pressed="false">Block cursor off</button>
                 <button id="storyPopupsButton" class="secondary-button" aria-pressed="true">▤ Story popups on</button>
                 <p>Preferences save with your city. Device reduced-motion settings take priority.</p>
                 <button id="settingsFeedbackButton" class="secondary-button">✉ Give feedback</button>
@@ -89,7 +91,7 @@
     <div id="tutorialHint" class="tutorial-hint">Tip: gather Salvage, then invest it in your first Camp.</div>
     <div class="save-status-row"><div id="autoSaveIndicator" class="auto-save-indicator">● Auto-save ready</div>
         <progress id="saveActionProgress" class="terminal-save-progress" max="100" value="0" aria-label="Device save status"></progress>
-        <div id="cloudSaveStatus" class="cloud-save-status" role="status" aria-live="polite">Guest play · saved on this browser</div><progress id="cloudActionProgress" class="terminal-save-progress" max="100" value="0" aria-label="Cloud sync status" hidden></progress></div>
+        <div id="cloudSaveStatus" class="cloud-save-status" role="status" aria-live="polite">Guest play · saved on this browser</div><progress id="cloudActionProgress" class="terminal-save-progress" max="100" value="0" aria-label="Cloud sync status" hidden></progress><p id="cloudTransferStream" class="terminal-transfer-stream" aria-hidden="true" data-no-icons hidden></p></div>
     <aside id="storyNotice" class="story-notice" hidden><div><p class="eyebrow">CITY ARCHIVES</p><strong id="storyNoticeTitle" role="status" aria-live="polite">A new story awaits</strong></div><button id="readLatestStory" class="secondary-button">Read transmission</button></aside>
     <section id="storyPanel" class="story-panel" aria-label="Unlocked city stories"></section>
     <section id="companionPanel" class="companion-panel" aria-label="Eggs and companions"></section>
@@ -479,6 +481,14 @@
 <div id="transmissionAnnouncer" class="terminal-sr-only" role="status" aria-live="polite"></div>
 <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
 <div id="crtOverlay" class="crt-overlay" aria-hidden="true"><i></i></div>
+<span id="terminalCursor" class="terminal-cursor" aria-hidden="true" hidden></span>
+<div id="terminalTooltip" class="terminal-tooltip" aria-hidden="true" hidden data-no-icons></div>
+<p id="terminalIdleText" aria-hidden="true" data-no-icons></p>
+<details id="terminalLogPanel" class="terminal-log-panel" hidden>
+    <summary aria-label="Expand terminal event log and command line">LOG / <span id="terminalLogCount">00</span> EVENTS <span class="terminal-blink" aria-hidden="true">_</span></summary>
+    <ol id="terminalEventList" aria-label="Recent session events" aria-live="off"></ol>
+    <form id="terminalCommandForm"><label for="terminalCommandInput" class="terminal-sr-only">Terminal command (enter help for commands)</label><input id="terminalCommandInput" placeholder="help / status / save" maxlength="80" autocomplete="off" spellcheck="false"><button type="submit" title="Run a navigation or status command">ENTER</button></form>
+</details>
 <dialog id="terminalBootModal" class="terminal-boot-modal" aria-labelledby="terminalBootTitle" aria-describedby="terminalBootStatus">
     <div class="boot-scanline" aria-hidden="true"></div>
     <div class="boot-city-fragments" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
@@ -491,9 +501,10 @@
     </section>
 </dialog>
 <dialog id="zoneHelpModal" class="account-modal zone-help-modal" aria-labelledby="zoneHelpTitle">
-    <p class="eyebrow">BUILDER'S FIELD MANUAL</p><h2 id="zoneHelpTitle">Zone help</h2>
-    <div id="zoneHelpContent"></div><p>Buildings, Tools and Research all live in Upgrades. Use the next-step link to find a useful action. Glyph buffs and pets are permanent; every glyph copy contributes up to its cap.</p>
-    <button id="zoneHelpClose" type="button">Back to the city</button>
+    <header class="manual-heading"><div><p class="eyebrow">ARCHIVE / BUILDER'S FIELD MANUAL</p><h2 id="zoneHelpTitle">LAST CITY / FIELD MANUAL</h2></div><button id="zoneHelpClose" type="button">Close [Esc]</button></header>
+    <div class="manual-layout"><nav class="manual-topics" aria-label="Manual chapters">
+        <button data-manual-topic="currencies" aria-pressed="false">01 / Currencies</button><button data-manual-topic="zones" aria-pressed="true">02 / Zones</button><button data-manual-topic="companions" aria-pressed="false">03 / Companions</button><button data-manual-topic="glyphs" aria-pressed="false">04 / Glyphs</button><button data-manual-topic="renewals" aria-pressed="false">05 / Renewals</button><button data-manual-topic="shortcuts" aria-pressed="false">06 / Command line</button>
+    </nav><div id="zoneHelpContent"></div></div>
 </dialog>
 <button id="mobileGather" class="mobile-gather" hidden>⚙ Gather <span id="mobileGatherPower">+1</span></button>
 <dialog id="introModal" class="intro-modal start-screen" aria-labelledby="introTitle" aria-describedby="startDescription" hidden>
@@ -537,7 +548,7 @@
             <aside class="start-daily" aria-labelledby="dailyRewardTitle"><span class="start-crate" aria-hidden="true">📦</span><div><p class="start-kicker" id="dailyRewardTitle">DAILY SUPPLY CRATE</p><strong id="dailyRewardAmount">250 Salvage</strong><small id="dailyRewardStatus" role="status" aria-live="polite">Optional · no streak to maintain · resets 00:00 UTC</small></div><button id="dailyRewardButton">Claim crate</button></aside>
             <aside class="start-news" aria-label="News and patch notes"><p class="start-kicker">CITY TRANSMISSIONS</p><div class="news-ticker"><div class="news-ticker-track"><span>NEW · Growth phases that matter. Permanent glyphs. A restored skyline.</span><span aria-hidden="true">NEW · Growth phases that matter. Permanent glyphs. A restored skyline.</span></div></div><details><summary>Read patch notes ↗</summary><ul><li>Restored artwork in all five zone themes.</li><li>New start page, opt-in ambient audio and daily supplies.</li><li>Flat → additive → compounding upgrades with fixed prices.</li><li>Existing saves, glyph buffs and earned blueprints are retained.</li></ul></details></aside>
         </div>
-        <footer class="start-footer"><span id="startBuildInfo">v1.0.2-dev · Build 2026.10.11 · Local review</span><span>ONE CITY. ANOTHER CHANCE.</span></footer>
+        <footer class="start-footer"><span id="startBuildInfo">v1.0.3-dev · Build 2026.10.11 · Local review</span><span>ONE CITY. ANOTHER CHANCE.</span></footer>
     </div>
 </dialog>
 
@@ -584,6 +595,7 @@
         </div>
         <p id="hatchStatus" class="hatch-status" role="status" aria-live="polite">Rolling through this egg’s pets…</p>
         <progress id="hatchActionProgress" class="terminal-action-progress" max="100" value="0" aria-label="Hatch reveal progress"></progress>
+        <p id="hatchTransferStream" class="terminal-transfer-stream" aria-hidden="true" data-no-icons hidden></p>
         <div id="hatchResult" class="hatch-result" hidden>
             <span id="hatchRarity" class="hatch-rarity"></span>
             <h3 id="hatchPetName"></h3>
@@ -677,6 +689,7 @@
 <script src="src/game/adventure.js"></script>
 <script src="src/game/pets.js"></script>
 <script src="src/ui/effects.js"></script>
+<script src="src/ui/terminal.js"></script>
 <script src="src/ui/world.js"></script>
 <script src="src/game/glyphs.js"></script>
 <script src="src/ui/player-ui.js"></script>
