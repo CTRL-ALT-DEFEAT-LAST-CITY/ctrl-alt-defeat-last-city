@@ -128,7 +128,7 @@ function companionContentMarkup(stage) {
 
 function autoHatchContextValid(session) {
     return !!session && currentGameMode === "companions" && companionView === "eggs"
-        && currentStageView === session.stage && isZoneUnlocked(session.stage) && !document.hidden && !el("loreModal")?.open;
+        && currentStageView === session.stage && isZoneUnlocked(session.stage) && !document.hidden && !el("loreModal")?.open && !el('terminalBootModal')?.open && !el('zoneHelpModal')?.open;
 }
 function syncAutoHatchControls() {
     const button = el("hatchAutoStopButton");
@@ -237,7 +237,7 @@ function confirmPetMerge() {
     mergeSelection.result = result;
     renderPetMerge();
     pulseVfx(el("mergePreview"), result.success ? "rgba(255,194,71,.7)" : "rgba(255,160,130,.5)");
-    playSfx(result.success ? "upgrade" : "build");
+    playSfx(result.success ? "upgrade" : "failure");
 }
 function closePetMerge() {
     mergeSelection = null;

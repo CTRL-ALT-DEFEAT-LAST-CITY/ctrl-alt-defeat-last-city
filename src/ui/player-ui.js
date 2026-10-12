@@ -73,8 +73,9 @@ function focusPlayerTarget(selector) {
     if (!target) return;
     const focus = target.disabled ? target.closest?.('.building-card, .infrastructure-grid, .zone-content') || target.parentElement : target;
     if (!focus) return;
-    document.querySelectorAll('.navigation-target').forEach(node => node.classList.remove('navigation-target'));
+    document.querySelectorAll('.navigation-target, [data-navigation-target]').forEach(node => { node.classList.remove('navigation-target'); delete node.dataset.navigationTarget; });
     target.classList?.add('navigation-target');
+    if(target.dataset)target.dataset.navigationTarget='true';
     if (focus !== target || !['BUTTON','A','INPUT'].includes(focus.tagName)) focus.setAttribute?.('tabindex','-1');
     target.scrollIntoView?.({ behavior: canPlayVfx() ? 'smooth' : 'auto', block: 'center' });
     focus.focus?.({preventScroll:true});
@@ -174,7 +175,7 @@ function renderRenewalPreview() {
 }
 function openRenewalPreview(stage) {
     if (!gameStarted || !Number.isInteger(stage) || stage<1 || stage>5 || !isZoneUnlocked(stage) || window.LastCityCloud?.isSwitching?.()
-        || ['introModal','accountModal','feedbackModal','renewalModal','loreModal','hatchModal','petMergeModal'].some(id=>el(id)?.open) || game.showOfflineModal || !!document.querySelector('.offline-modal')) return false;
+        || ['introModal','accountModal','feedbackModal','renewalModal','loreModal','hatchModal','petMergeModal','terminalBootModal','zoneHelpModal'].some(id=>el(id)?.open) || game.showOfflineModal || !!document.querySelector('.offline-modal')) return false;
     if (glyphAuto) stopGlyphAuto('Auto-roll stopped while reviewing renewal.');
     if (autoHatchSession) stopAutoHatch('Auto hatch stopped while reviewing renewal.');
     renewalStage=stage; renewalSaveKey=getSaveKey(); renewalReturnFocus=document.activeElement;
@@ -189,6 +190,7 @@ function confirmRenewal() {
     if (!renewalSummary(stage).ready) { renderRenewalPreview(); return false; }
     clearRenewalPreview();
     if (stage===1) doRebirth(); else resetSimulatorStage(stage);
+    startTerminalBoot('renewal');
     return true;
 }
 function initPlayerUI() {
@@ -207,7 +209,8 @@ function initPlayerUI() {
     if (badges) el('statsPanel')?.appendChild?.(badges);
     el("mobileGather")?.addEventListener("click", () => {
         if (!gameStarted || currentGameMode !== "city" || currentStageView !== 1 || window.LastCityCloud?.isSwitching?.()) return;
-        el("energyButton")?.click?.();
+        const previous=gatherFeedbackAnchor;gatherFeedbackAnchor=el('mobileGather');
+        try{el("energyButton")?.click?.();}finally{gatherFeedbackAnchor=previous;}
     });
     el("introModal")?.addEventListener("cancel", event => event.preventDefault());
     initStartupUI();

@@ -102,9 +102,10 @@ function hatchEgg(stage, { automatic = false } = {}) {
 function startHatchReveal(stage, rarity, id) {
     const modal = el("hatchModal"), strip = el("hatchStrip");
     if (!modal || !strip) return;
+    clearHatchEffects();
     const [name, icon] = ZONE_PETS[stage][rarity];
     const hatch = activeHatch = {
-        stage, rarity, name, icon, phase: "rolling", timers: [],
+        stage, rarity, name, icon, phase: "rolling", startedAt:Date.now(), timers: [],
         copies: game.adventure.collection[id], bonus: Math.round(petBonus(id) * 100)
     };
     modal.classList.remove("hatch-revealed");
@@ -122,9 +123,11 @@ function startHatchReveal(stage, rarity, id) {
     el("hatchStatus").textContent = "Rolling through this egg’s pets… Hatch odds are unchanged.";
     el("hatchResult").hidden = true;
     el("hatchSkipButton").textContent = "Skip animation";
+    terminalProgress('hatchActionProgress',0,'Hatch reveal in progress');
     el("skipHatchAnimations").checked = !!game.skipHatchAnimations;
     document.body.classList.add("hatch-open");
     modal.showModal();
+    modal.scrollTop=0;el('hatchSkipButton')?.focus?.({preventScroll:true});
     animateVfx(modal, [{ opacity: .5, transform: "scale(.97)" }, { opacity: 1, transform: "scale(1)" }]);
     syncAutoHatchControls();
     const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -165,9 +168,10 @@ function revealHatch() {
         : "New companion added to your collection!";
     el("hatchStatus").textContent = "You hatched " + hatch.name + "!";
     el("hatchResult").hidden = false;
+    terminalProgress('hatchActionProgress',100,'Hatch revealed');
     pulseVfx(el("hatchResult"), rarity.color);
     el("hatchSkipButton").textContent = "Continue";
-    playSfx("upgrade");
+    terminalHatchReveal();
     scheduleAutoHatchReveal();
 }
 function closeHatchReveal({ continueAuto = false } = {}) {
@@ -175,6 +179,7 @@ function closeHatchReveal({ continueAuto = false } = {}) {
     if (!activeHatch) return;
     if (activeHatch.phase === "rolling") revealHatch();
     clearHatchTimers();
+    clearHatchEffects();
     activeHatch = null;
     el("hatchModal").close();
     document.body.classList.remove("hatch-open");
@@ -276,6 +281,7 @@ function renderZone(stage) {
     if (stage === 5) {
         activity = '<div class="activity-buttons"><button data-action="channel" ' + (Date.now() < (a.coreReadyAt || 0) ? 'disabled' : '') + '>Channel reactor · +' + formatNumber(coreChannelReward()) + ' Cores</button></div><div class="guardian-avatar">' + (a.bossDefeated ? "🏆" : "🤖") + '</div><div class="guardian-health"><div style="width:' + a.bossHealth + '%"></div></div><div class="activity-buttons">' + [0, 1, 2].map(n => '<button data-action="shield" data-choice="' + n + '" ' + (a.shields.includes(n) || a.bossDefeated ? "disabled" : "") + '>' + (a.shields.includes(n) ? "✓ Disabled" : "Break shield " + (n + 1)) + '</button>').join("") + '<button data-action="fire" ' + (a.shields.length !== 3 || game.cores < cannonCost() || a.bossDefeated ? "disabled" : "") + '>Fire cannon · ' + cannonCost() + ' Cores</button></div><p class="activity-tip">Cannon costs rise with each shot: 100 → 200 → 400 → 800 Cores. Each shot deals 25 damage. Shields regenerate after a shot. Victory grants permanent ×2 Core production and the Legacy Glyph Archive.</p>';
     }
+    if(stage===5)activity+='<progress id="channelActionProgress" class="terminal-action-progress" max="100" value="100" aria-label="Reactor channel cooldown"></progress>';
     const completed = stage === 5 ? a.bossDefeated : isZoneUnlocked(stage + 1);
     mount.innerHTML = '<article class="zone-scene zone-' + stage + '"><div class="zone-scenery" aria-hidden="true"><span>' + zone.icon + '</span><i></i><i></i><i></i></div><div class="zone-content"><p class="eyebrow">ZONE ' + stage + ' · ' + zone.label.toUpperCase() + '</p><h2>' + zone.name + '</h2><p class="zone-lore">' + zone.lore + '</p><div class="zone-quest"><strong>' + (completed ? "✓ Zone objective complete" : zone.quest) + '</strong><span>' + objective.detail + '</span></div>' + activity + (stage < 5 ? '<button class="zone-unlock" data-action="unlock" ' + (completed || !objective.ready ? "disabled" : "") + '>' + (completed ? "✓ " + zone.next + " unlocked" : stage === 1 ? "Restore the beacon → Settlement" : "Open " + zone.next) + '</button>' : "") + '<p class="zone-pet-summary">Companion power: ×' + getCompanionMultiplier(stage).toFixed(2) + ' · Hatch ' + zone.egg + ' in the Pets tab.</p></div></article>';
 }

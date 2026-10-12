@@ -350,6 +350,8 @@ const gameModeTabs = document.querySelectorAll(".game-mode-tab");
 let currentStageView = 1;
 let currentGameMode = "city";
 let audioContext;
+const sfxLastTimes=new Map();
+const sfxVoices=new Set();
 
 function totalBuildings() {
     return Object.values(game.buildings).reduce((sum, count) => sum + count, 0);
@@ -508,7 +510,7 @@ function buyBuilding(type) {
     playSfx("build");
     spawnBurst(el("buy" + type.charAt(0).toUpperCase() + type.slice(1)), "#65baff", 12);
     updateGame();
-    pulseVfx(el("buy" + type.charAt(0).toUpperCase() + type.slice(1))?.closest?.(".building-card"));
+    terminalPurchase(el("buy" + type.charAt(0).toUpperCase() + type.slice(1)));
     saveGame(false);
 }
 
@@ -786,11 +788,13 @@ energyButton.addEventListener("click", function () {
     game.totalClicks++;
     if (isCritical) game.criticalClicks++;
     game.highestCombo = Math.max(game.highestCombo, game.combo);
-    showFloatingGain(energyButton, `${isCritical ? "CRITICAL! " : ""}+${formatNumber(click)} ⚙️`);
-    spawnBurst(energyButton, isCritical ? "#aa8cff" : "#ffc247", isCritical ? 20 : 10);
+    const feedbackAnchor=gatherFeedbackAnchor || energyButton;
+    showFloatingGain(feedbackAnchor, `${isCritical ? "CRITICAL! " : ""}+${formatNumber(click)} ⚙️`);
+    spawnBurst(feedbackAnchor, isCritical ? "#aa8cff" : "#ffc247", isCritical ? 20 : 10);
     playSfx(isCritical ? "critical" : "click");
     pulseResource(1, isCritical);
-    animateVfx(energyButton, [{ transform: "scale(.97)" }, { transform: "scale(1)" }], { duration: 140 });
+    terminalGather(isCritical,feedbackAnchor);
+    animateVfx(feedbackAnchor, [{ transform: "scale(.97)" }, { transform: "scale(1)" }], { duration: 140 });
     updateGame();
 });
 
@@ -843,6 +847,7 @@ stageTabs.forEach(tab => {
         }
         if (stage === currentStageView) return;
 
+        const previousStage=currentStageView;
         currentStageView = stage;
         game.lastStageView = stage;
         stageTabs.forEach(t => t.setAttribute("aria-pressed", String(Number(t.dataset.stage) === stage)));
@@ -852,6 +857,7 @@ stageTabs.forEach(tab => {
         el(`stage${stage}Panel`).classList.add("active");
         updateGame();
         animateNavigation(tab);
+        terminalZoneTravel(previousStage,stage);
         scrollPlayerSection();
     });
 });
@@ -910,6 +916,7 @@ function formatTimeAway(seconds) {
 }
 
 function showOfflineModal() {
+    if(el('terminalBootModal')?.open)return;
     if (!gameStarted) return;
     if (!game.showOfflineModal) return;
     const e = game.offlineEarnings;
@@ -950,6 +957,7 @@ window.closeOfflineModal = closeOfflineModal;
 
 function gameLoop() {
     if (!gameStarted) return;
+    if (el('terminalBootModal')?.open) return;
     if (window.LastCityCloud?.isSwitching()) return;
     game.playTimeSeconds++;
     if (game.combo > 0 && Date.now() > game.comboExpires) {
@@ -1128,6 +1136,7 @@ function updateGame() {
     renderWorldUI();
     renderGlyphs();
     renderPlayerUI();
+    refreshTerminalUI();
 
     // Tab locks
     stageTabs.forEach(tab => {
@@ -1461,6 +1470,7 @@ function saveGame(showMsg = true) {
     try {
         localStorage.setItem(getSaveKey(), JSON.stringify(game));
         startupSaveAvailable = true;
+        terminalProgressSavedAt=Date.now();
     } catch (error) {
         if (showMsg) showNotification("Browser storage unavailable. Check your cloud save status.");
         window.LastCityCloud?.onSave(showMsg);
@@ -1478,6 +1488,8 @@ function saveGame(showMsg = true) {
 }
 
 function loadGame(snapshot) {
+    clearTerminalSession();
+    el('zoneHelpModal')?.close?.();
     clearRenewalPreview();
     clearFeedbackSession();
     startupSaveAvailable = false;
@@ -1586,7 +1598,7 @@ function showFloatingGain(anchor, text) {
     if (!layer || !anchor || !canPlayVfx()) return;
     const rect = anchor.getBoundingClientRect();
     const gain = document.createElement("span");
-    gain.className = "floating-gain";
+    gain.className = "floating-gain" + (text.startsWith('CRITICAL!')?' critical-gain':'');
     gain.textContent = text;
     gain.style.left = `${rect.left + rect.width / 2 + (Math.random() - 0.5) * 36}px`;
     gain.style.top = `${rect.top + 12}px`;
@@ -1603,8 +1615,9 @@ function spawnBurst(anchor, color, amount = 8) {
         particle.style.left = `${rect.left + rect.width / 2}px`;
         particle.style.top = `${rect.top + rect.height / 2}px`;
         particle.style.background = color;
-        particle.style.setProperty("--x", `${(Math.random() - 0.5) * 150}px`);
-        particle.style.setProperty("--y", `${-20 - Math.random() * 110}px`);
+        const angle=i/amount*Math.PI*2, distance=45+Math.random()*45;
+        particle.style.setProperty("--x", `${Math.cos(angle)*distance}px`);
+        particle.style.setProperty("--y", `${Math.sin(angle)*distance}px`);
         particle.style.animationDelay = `${Math.random() * 80}ms`;
         if (!mountVfx(particle)) break;
     }
@@ -1612,6 +1625,7 @@ function spawnBurst(anchor, color, amount = 8) {
 
 function celebrateUpgrade() {
     playSfx("upgrade");
+    terminalPurchase();
     if (!canPlayVfx()) return;
     const anchor = document.activeElement?.classList.contains("upgrade-card")
         ? document.activeElement : document.querySelector(".game-mode-tabs");
@@ -1678,29 +1692,51 @@ function showNextCelebration() {
 }
 
 function showNotification(msg) {
-    notification.textContent = msg;
-    notification.classList.add("show");
-    setTimeout(() => notification.classList.remove("show"), 2000);
+    terminalTransmission(msg);
 }
 
 function playSfx(type = "click") {
-    if (!game.soundEnabled || !(window.AudioContext || window.webkitAudioContext)) return;
+    if (!game.soundEnabled || document.hidden || window.LastCityCloud?.isSwitching?.() || !(window.AudioContext || window.webkitAudioContext)) return;
     try {
+        const now=Date.now(), cooldown={ui:60,click:70,beep:250,failure:250,hatch:500,rebirth:1000}[type] || 120;
+        if(sfxVoices.size+(type==='hatch'?3:type==='travel'?2:1)>12 || now-(sfxLastTimes.get(type)??-Infinity)<cooldown)return;
+        sfxLastTimes.set(type,now);
         audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
-        if (audioContext.state === "suspended") audioContext.resume();
-        const notes = { click: [430, .045, "sine"], build: [300, .1, "triangle"], upgrade: [620, .14, "sine"], critical: [820, .16, "square"], dispatch: [500, .18, "triangle"] };
+        if (audioContext.state === "suspended") audioContext.resume()?.catch?.(()=>{});
+        const notes = { click:[110,.12,'triangle'],ui:[440,.035,'sine'],beep:[660,.055,'sine'],failure:[170,.12,'triangle'],boot:[240,.16,'sine'],travel:[190,.25,'sine'],rebirth:[55,.5,'triangle'],hatch:[261.63,.45,'sine'],build:[140,.14,'triangle'],upgrade:[180,.16,'triangle'],critical:[900,.14,'sine'],dispatch:[500,.18,'triangle'] };
         const [frequency, duration, wave] = notes[type] || notes.click;
         const oscillator = audioContext.createOscillator();
         const gain = audioContext.createGain();
         oscillator.type = wave;
         oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
         if (type === "upgrade" || type === "dispatch") oscillator.frequency.exponentialRampToValueAtTime(frequency * 1.5, audioContext.currentTime + duration);
+        else oscillator.frequency.exponentialRampToValueAtTime(frequency*(type==='critical'?2:type==='travel'?1.8:.45),audioContext.currentTime+duration);
         gain.gain.setValueAtTime(.0001, audioContext.currentTime);
         gain.gain.exponentialRampToValueAtTime(.045, audioContext.currentTime + .01);
         gain.gain.exponentialRampToValueAtTime(.0001, audioContext.currentTime + duration);
         oscillator.connect(gain).connect(audioContext.destination);
         oscillator.start();
+        sfxVoices.add(oscillator);
         oscillator.stop(audioContext.currentTime + duration);
+        oscillator.onended=()=>{sfxVoices.delete(oscillator);oscillator.disconnect();gain.disconnect();};
+        if(type==='hatch')for(const note of [329.63,392]){
+            const voice=audioContext.createOscillator(),volume=audioContext.createGain();voice.type='sine';voice.frequency.value=note;
+            volume.gain.setValueAtTime(.015,audioContext.currentTime);volume.gain.exponentialRampToValueAtTime(.0001,audioContext.currentTime+.45);
+            voice.connect(volume).connect(audioContext.destination);voice.start();voice.stop(audioContext.currentTime+.45);
+            sfxVoices.add(voice);
+            voice.onended=()=>{sfxVoices.delete(voice);voice.disconnect();volume.disconnect();};
+        }
+        if(type==='travel' && audioContext.createBuffer && audioContext.createBufferSource && audioContext.createBiquadFilter){
+            const samples=Math.floor(audioContext.sampleRate*.3),buffer=audioContext.createBuffer(1,samples,audioContext.sampleRate),data=buffer.getChannelData(0);
+            // A private deterministic noise sequence, never the gameplay RNG.
+            let seed=189;for(let i=0;i<samples;i++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;data[i]=seed/2147483648-1;}
+            const wind=audioContext.createBufferSource(),filter=audioContext.createBiquadFilter(),volume=audioContext.createGain();wind.buffer=buffer;filter.type='lowpass';filter.frequency.setValueAtTime(500,audioContext.currentTime);filter.frequency.exponentialRampToValueAtTime(1600,audioContext.currentTime+.25);
+            volume.gain.setValueAtTime(.0001,audioContext.currentTime);volume.gain.exponentialRampToValueAtTime(.025,audioContext.currentTime+.08);volume.gain.exponentialRampToValueAtTime(.0001,audioContext.currentTime+.3);
+            wind.connect(filter).connect(volume).connect(audioContext.destination);
+            let delay,echo;if(audioContext.createDelay){delay=audioContext.createDelay(.5);echo=audioContext.createGain();delay.delayTime.value=.13;echo.gain.value=.2;volume.connect(delay).connect(echo).connect(audioContext.destination);}
+            sfxVoices.add(wind);wind.start();wind.stop(audioContext.currentTime+.45);
+            wind.onended=()=>{sfxVoices.delete(wind);wind.disconnect();filter.disconnect();volume.disconnect();delay?.disconnect();echo?.disconnect();};
+        }
     } catch (_) { }
 }
 
@@ -1713,7 +1749,7 @@ function showIntroModal() {
             [{ opacity: .4, transform: "translateY(12px) scale(.98)" }, { opacity: 1, transform: "translateY(0) scale(1)" }]);
     }
 }
-function closeIntroModal() {
+function closeIntroModal({deferOffline=false}={}) {
     if (!introModal || gameStarted || window.LastCityCloud?.isSwitching?.() || el('accountModal')?.open) return;
     closeStartupPanels();
     const stage = isZoneUnlocked(game.lastStageView) ? game.lastStageView : 1;
@@ -1731,12 +1767,13 @@ function closeIntroModal() {
     saveGame(false);
     updateGame();
     (stage === 1 ? energyButton : el('milestoneAction'))?.focus?.({ preventScroll: true });
-    showOfflineModal();
+    if(!deferOffline)showOfflineModal();
 }
 
 function toggleGameSound() {
     if (window.LastCityCloud?.isSwitching?.()) return;
     game.soundEnabled = !game.soundEnabled;
+    if(!game.soundEnabled)silenceGameAudio();
     soundButton.textContent = game.soundEnabled ? "🔊 Sound" : "🔇 Sound";
     soundButton.setAttribute("aria-pressed", String(game.soundEnabled));
     if (game.soundEnabled) playSfx("click");
@@ -1745,7 +1782,7 @@ function toggleGameSound() {
     saveGame(false);
 }
 soundButton.addEventListener("click", toggleGameSound);
-introStartButton.addEventListener("click", closeIntroModal);
+introStartButton.addEventListener("click", launchCityTerminal);
 
 // =============================================
 // START

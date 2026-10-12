@@ -1,5 +1,5 @@
 // The title page owns its presentation, optional audio and explicit daily claim.
-const LAST_CITY_BUILD = { version: '1.0.1-dev', date: '2026.10.08', channel: 'Local review' };
+const LAST_CITY_BUILD = { version: '1.0.2-dev', date: '2026.10.11', channel: 'Local review' };
 let startupSaveAvailable = false, ambientAudioArmed = false, ambientLoop = null, dailyClaimError = '';
 
 function normalizeDailyReward(saved = {}) {
@@ -94,20 +94,23 @@ function syncAmbientAudio() {
     const Audio = window.AudioContext || window.webkitAudioContext;
     if (!ambientAudioArmed || !game.soundEnabled || game.ambientEnabled !== true || document.hidden
         || window.LastCityCloud?.isSwitching?.() || el('accountModal')?.open || !Audio) { stopAmbientAudio(); return; }
-    if (ambientLoop) return;
+    const stage=typeof currentStageView==='number'?currentStageView:1;
+    if (ambientLoop?.stage===stage) return;
+    if (ambientLoop) stopAmbientAudio();
     let context;
     try {
         context = new Audio();
         const volume = context.createGain(); volume.gain.value = .012; volume.connect(context.destination);
-        const oscillators = [110, 164.81, 220].map(frequency => {
+        const tones={1:[110,164.81,220],2:[98,146.83,196],3:[82.41,123.47,164.81],4:[130.81,196,261.63],5:[146.83,220,293.66]};
+        const oscillators = tones[stage].map(frequency => {
             const voice = context.createOscillator(), gain = context.createGain();
             voice.type = 'sine'; voice.frequency.value = frequency; gain.gain.value = .3;
             voice.connect(gain).connect(volume); voice.start(); return voice;
         });
         const drift = context.createOscillator(), depth = context.createGain();
-        drift.frequency.value = .08; depth.gain.value = .003;
+        drift.frequency.value = {1:.08,2:.045,3:.12,4:.18,5:.06}[stage]; depth.gain.value = .003;
         drift.connect(depth).connect(volume.gain); drift.start(); oscillators.push(drift);
-        ambientLoop = { context, oscillators };
+        ambientLoop = { context, oscillators, stage };
         context.resume()?.catch?.(() => { if (ambientLoop?.context === context) stopAmbientAudio(); });
     } catch (_) {
         if (ambientLoop?.context === context) stopAmbientAudio();
@@ -115,7 +118,7 @@ function syncAmbientAudio() {
     }
 }
 function initStartupUI() {
-    el('startContinueButton')?.addEventListener('click', closeIntroModal);
+    el('startContinueButton')?.addEventListener('click',()=>typeof launchCityTerminal==='function'?launchCityTerminal():closeIntroModal());
     el('startSettingsButton')?.addEventListener('click', () => toggleStartupPanel('startSettingsPanel'));
     el('startCreditsButton')?.addEventListener('click', () => toggleStartupPanel('startCreditsPanel'));
     document.querySelectorAll('[data-start-close]').forEach(button => button.addEventListener('click', () => {

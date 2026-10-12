@@ -27,6 +27,7 @@
         <p class="tagline">Rebuild Civilization One Click at a Time</p>
     </div>
     <div class="header-buttons">
+        <button id="zoneHelpButton" class="secondary-button" type="button" aria-label="Help for the current zone" title="Current zone field manual">?</button>
         <details id="playerSettings" class="player-settings">
             <summary>⚙ Settings</summary>
             <div class="settings-menu"><p class="eyebrow">ACCOUNT &amp; SAVES</p>
@@ -87,7 +88,8 @@
     </section>
     <div id="tutorialHint" class="tutorial-hint">Tip: gather Salvage, then invest it in your first Camp.</div>
     <div class="save-status-row"><div id="autoSaveIndicator" class="auto-save-indicator">● Auto-save ready</div>
-        <div id="cloudSaveStatus" class="cloud-save-status" role="status" aria-live="polite">Guest play · saved on this browser</div></div>
+        <progress id="saveActionProgress" class="terminal-save-progress" max="100" value="0" aria-label="Device save status"></progress>
+        <div id="cloudSaveStatus" class="cloud-save-status" role="status" aria-live="polite">Guest play · saved on this browser</div><progress id="cloudActionProgress" class="terminal-save-progress" max="100" value="0" aria-label="Cloud sync status" hidden></progress></div>
     <aside id="storyNotice" class="story-notice" hidden><div><p class="eyebrow">CITY ARCHIVES</p><strong id="storyNoticeTitle" role="status" aria-live="polite">A new story awaits</strong></div><button id="readLatestStory" class="secondary-button">Read transmission</button></aside>
     <section id="storyPanel" class="story-panel" aria-label="Unlocked city stories"></section>
     <section id="companionPanel" class="companion-panel" aria-label="Eggs and companions"></section>
@@ -280,6 +282,7 @@
                 <p>Call in a crate worth 25 seconds of your current Salvage income. It recharges while you play.</p>
                 <button id="dispatchButton" class="dispatch-button">CALL SUPPLY DROP</button>
                 <small id="dispatchTimer">Build your city to improve each drop.</small>
+                <progress id="dispatchActionProgress" class="terminal-action-progress" max="100" value="100" aria-label="Supply-drop recharge"></progress>
             </article>
             <article class="contracts-card">
                 <div class="panel-heading"><div><p class="eyebrow">CITY CONTRACTS</p><h2>Quick Wins</h2></div></div>
@@ -473,7 +476,25 @@
 </div>
 
 <div id="notification" class="notification">Game Saved</div>
+<div id="transmissionAnnouncer" class="terminal-sr-only" role="status" aria-live="polite"></div>
 <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
+<div id="crtOverlay" class="crt-overlay" aria-hidden="true"><i></i></div>
+<dialog id="terminalBootModal" class="terminal-boot-modal" aria-labelledby="terminalBootTitle" aria-describedby="terminalBootStatus">
+    <div class="boot-scanline" aria-hidden="true"></div>
+    <div class="boot-city-fragments" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <section class="terminal-boot-console">
+        <h2 id="terminalBootTitle">ASHFALL / TERMINAL</h2>
+        <p id="terminalBootStatus">Establishing a city connection. Skip or press Escape to continue immediately.</p>
+        <pre id="terminalBootText" data-no-icons aria-hidden="true"></pre>
+        <progress id="terminalBootProgress" max="100" value="0" aria-label="Terminal connection progress"></progress>
+        <button id="terminalBootSkip" type="button" autofocus>Skip boot sequence</button>
+    </section>
+</dialog>
+<dialog id="zoneHelpModal" class="account-modal zone-help-modal" aria-labelledby="zoneHelpTitle">
+    <p class="eyebrow">BUILDER'S FIELD MANUAL</p><h2 id="zoneHelpTitle">Zone help</h2>
+    <div id="zoneHelpContent"></div><p>Buildings, Tools and Research all live in Upgrades. Use the next-step link to find a useful action. Glyph buffs and pets are permanent; every glyph copy contributes up to its cap.</p>
+    <button id="zoneHelpClose" type="button">Back to the city</button>
+</dialog>
 <button id="mobileGather" class="mobile-gather" hidden>⚙ Gather <span id="mobileGatherPower">+1</span></button>
 <dialog id="introModal" class="intro-modal start-screen" aria-labelledby="introTitle" aria-describedby="startDescription" hidden>
     <div class="intro-card start-card">
@@ -516,7 +537,7 @@
             <aside class="start-daily" aria-labelledby="dailyRewardTitle"><span class="start-crate" aria-hidden="true">📦</span><div><p class="start-kicker" id="dailyRewardTitle">DAILY SUPPLY CRATE</p><strong id="dailyRewardAmount">250 Salvage</strong><small id="dailyRewardStatus" role="status" aria-live="polite">Optional · no streak to maintain · resets 00:00 UTC</small></div><button id="dailyRewardButton">Claim crate</button></aside>
             <aside class="start-news" aria-label="News and patch notes"><p class="start-kicker">CITY TRANSMISSIONS</p><div class="news-ticker"><div class="news-ticker-track"><span>NEW · Growth phases that matter. Permanent glyphs. A restored skyline.</span><span aria-hidden="true">NEW · Growth phases that matter. Permanent glyphs. A restored skyline.</span></div></div><details><summary>Read patch notes ↗</summary><ul><li>Restored artwork in all five zone themes.</li><li>New start page, opt-in ambient audio and daily supplies.</li><li>Flat → additive → compounding upgrades with fixed prices.</li><li>Existing saves, glyph buffs and earned blueprints are retained.</li></ul></details></aside>
         </div>
-        <footer class="start-footer"><span id="startBuildInfo">v1.0.1-dev · Build 2026.10.08 · Local review</span><span>ONE CITY. ANOTHER CHANCE.</span></footer>
+        <footer class="start-footer"><span id="startBuildInfo">v1.0.2-dev · Build 2026.10.11 · Local review</span><span>ONE CITY. ANOTHER CHANCE.</span></footer>
     </div>
 </dialog>
 
@@ -553,6 +574,8 @@
 
 <dialog id="hatchModal" class="hatch-modal" aria-labelledby="hatchTitle" aria-describedby="hatchStatus">
     <div class="hatch-card">
+        <div id="hatchFx" class="hatch-fx" aria-hidden="true"></div>
+        <div class="terminal-hatch-egg" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2C6 2 3 12 4 17c2 7 14 7 16 0 1-5-2-15-8-15z"></path><path class="egg-crack" d="M12 4l-3 5 5 3-4 5 3 3"></path></svg></div>
         <p class="eyebrow">COMPANION SIGNAL FOUND</p>
         <h2 id="hatchTitle">Opening your egg</h2>
         <div class="hatch-reel" aria-hidden="true">
@@ -560,6 +583,7 @@
             <div id="hatchStrip" class="hatch-strip"></div>
         </div>
         <p id="hatchStatus" class="hatch-status" role="status" aria-live="polite">Rolling through this egg’s pets…</p>
+        <progress id="hatchActionProgress" class="terminal-action-progress" max="100" value="0" aria-label="Hatch reveal progress"></progress>
         <div id="hatchResult" class="hatch-result" hidden>
             <span id="hatchRarity" class="hatch-rarity"></span>
             <h3 id="hatchPetName"></h3>

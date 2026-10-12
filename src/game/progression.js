@@ -162,7 +162,7 @@ function collectFieldNode(id, auto = false) {
 }
 let lastDroneCollection = 0;
 function updateCollectionField(now = Date.now()) {
-    if (!gameStarted || !game.stage4Unlocked || document.hidden || window.LastCityCloud?.isSwitching?.() || el("accountModal")?.open) return;
+    if (!gameStarted || !game.stage4Unlocked || document.hidden || window.LastCityCloud?.isSwitching?.() || el("accountModal")?.open || el('terminalBootModal')?.open) return;
     const onField = currentStageView === 4 && currentGameMode === "city";
     if (!onField && !stageAutomationOwned(4)) return;
     const p = game.adventure.progression;
@@ -207,6 +207,8 @@ function renderProgressionZone(stage) {
             remaining = job ? Math.max(0, Math.ceil((job.readyAt - Date.now()) / 1000)) : 0;
         activity = '<p class="recipe-label">Order ' + (a.deliveries + 1) + ' · ' + recipe.name + '</p><div class="assembly-slots">' + recipe.pieces.map((name, i) => '<span class="' + (a.assembly[i] === name ? "filled" : "") + '">' + (a.assembly[i] === name ? "✓ " : "") + name + '</span>').join("") + '</div><div class="activity-buttons">' + ["Gear", "Spring", "Plate"].map(name => '<button data-action="component" data-choice="' + name + '" ' + (job ? "disabled" : "") + '>' + name + '</button>').join("") + '<button data-action="assemble" ' + (job || a.assembly.length !== 3 || game.parts < engineCost() ? "disabled" : "") + '>Process · ' + engineCost() + ' Parts</button>' + (job ? '<button data-action="deliver" ' + (remaining ? "disabled" : "") + '>' + (remaining ? "Processing · " + remaining + "s" : "Deliver · +" + formatNumber(job.reward) + " Parts") + '</button>' : "") + '</div>' + (job ? '<div class="production-track"><div style="width:' + Math.min(100, (Date.now() - job.startedAt) / (job.readyAt - job.startedAt) * 100) + '%"></div></div>' : "") + '<p class="activity-tip">Recipes change every 6 deliveries. Processing takes ' + engineDuration() / 1000 + 's. Buy Forge Tools for larger profits and faster jobs, or Auto Assembly to automate the loop.</p>';
     }
+    if(stage===2)activity+='<progress id="searchActionProgress" class="terminal-action-progress" max="100" value="100" aria-label="Search crew progress"></progress>';
+    if(stage===3)activity+='<progress id="assemblyActionProgress" class="terminal-action-progress" max="100" value="0" aria-label="Assembly progress"></progress>';
     const completed = isZoneUnlocked(stage + 1);
     const markup = '<article class="zone-scene zone-' + stage + '"><div class="zone-scenery" aria-hidden="true"><span>' + zone.icon + '</span><i></i><i></i><i></i></div><div class="zone-content"><p class="eyebrow">ZONE ' + stage + '</p><h2>' + zone.name + '</h2><p class="zone-lore">' + zone.lore + '</p><div class="zone-quest"><strong>' + (completed ? "✓ Zone objective complete" : zone.quest) + '</strong><span>' + objective.detail + '</span></div>' + activity + '<button class="zone-unlock" data-action="unlock" ' + (completed || !objective.ready ? "disabled" : "") + '>' + (completed ? "✓ " + zone.next + " unlocked" : "Open " + zone.next) + '</button></div></article>';
     if (mount.innerHTML !== markup) mount.innerHTML = markup;

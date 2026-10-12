@@ -94,7 +94,7 @@ function setStoryPopupPreference(enabled) {
 }
 function lorePopupBlocked() {
     return !gameStarted || document.hidden || window.LastCityCloud?.isSwitching?.()
-        || ["introModal", "accountModal", "feedbackModal", "renewalModal", "hatchModal", "petMergeModal"].some(id => el(id)?.open)
+        || ["introModal", "accountModal", "feedbackModal", "renewalModal", "hatchModal", "petMergeModal", "terminalBootModal", "zoneHelpModal"].some(id => el(id)?.open)
         || game.showOfflineModal || !!document.querySelector(".offline-modal");
 }
 function clearLorePopupSession() {

@@ -92,7 +92,7 @@ function glyphOdds(family){const s=game.glyphs.zones[family],definitions=glyphDe
     return weights.map(weight=>sum?weight/sum:0);}
 function glyphUpgradeCost(family,key){const def=GLYPH_UPGRADES[key];return def?Math.ceil(def.cost*Math.pow(def.growth,game.glyphs.research[key])):Infinity;}
 function glyphMenuInteractionAllowed(){return gameStarted&&currentGameMode==="glyphs"&&game.glyphs.view==='roll'&&!document.hidden&&!window.LastCityCloud?.isSwitching?.()
-    &&!el("introModal")?.open&&!el("accountModal")?.open&&!el("loreModal")?.open&&!el("hatchModal")?.open&&!el("petMergeModal")?.open&&!game.showOfflineModal&&!document.querySelector(".offline-modal");}
+    &&!el("introModal")?.open&&!el("accountModal")?.open&&!el("loreModal")?.open&&!el("hatchModal")?.open&&!el("petMergeModal")?.open&&!el('terminalBootModal')?.open&&!el('zoneHelpModal')?.open&&!game.showOfflineModal&&!document.querySelector(".offline-modal");}
 function glyphInteractionAllowed(family){return glyphMenuInteractionAllowed()&&game.glyphs.selected===family&&glyphUnlocked(family);}
 function glyphResearchUnlocked(){return Object.keys(GLYPH_ZONES).some(family=>glyphUnlocked(Number(family)));}
 function rollGlyph(family,automatic=false){
