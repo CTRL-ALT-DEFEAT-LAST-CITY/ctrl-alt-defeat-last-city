@@ -144,6 +144,7 @@ function clearTerminalSession() {
     el('notification')?.classList.remove('show');
 }
 function silenceGameAudio() {
+    if(typeof stopReconAudio==='function')stopReconAudio();
     if(typeof sfxVoices==='undefined')return;
     for(const voice of sfxVoices){try{voice.stop();voice.onended?.();}catch(_){}}
     sfxVoices.clear();
@@ -180,7 +181,8 @@ function startTerminalBoot(kind = 'startup') {
     if(typeof glyphAuto!=='undefined' && glyphAuto)stopGlyphAuto('Auto-roll paused for terminal boot.');
     if(typeof autoHatchSession!=='undefined' && autoHatchSession)stopAutoHatch('Auto hatch paused for terminal boot.');
     el('terminalBootSkip')?.focus?.({preventScroll:true});
-    const text='> ASHFALL TERMINAL v2.189...\n> CONNECTING TO RELAY...\n> SIGNAL ACQUIRED.';
+    const text=typeof terminalBootLines==='function'?terminalBootLines(kind):'> ASHFALL TERMINAL v2.189...\n> CONNECTING TO RELAY...\n> SIGNAL ACQUIRED.';
+    if(el('terminalBootCursor'))el('terminalBootCursor').hidden=terminalCursorEnabled;
     let index=0, glitched=false;
     const glitchBoot=typeof terminalPresentationRandom==='function' && terminalPresentationRandom()<.1;
     delete modal.dataset.glitch;
@@ -189,15 +191,15 @@ function startTerminalBoot(kind = 'startup') {
     const step=()=>{
         if (token!==terminalBootToken) return;
         if (!canPlayVfx() || terminalBootKey!==getSaveKey() || window.LastCityCloud?.isSwitching?.()) return finishTerminalBoot(false);
-        el('terminalBootText').textContent=text.slice(0,++index);
+        index=Math.min(text.length,index+3);el('terminalBootText').textContent=text.slice(0,index);
         el('terminalBootProgress').value=index/text.length*100;
-        if(glitchBoot && !glitched && index===40){
+        if(glitchBoot && !glitched && index>=Math.floor(text.length/2)){
             glitched=true;modal.dataset.glitch='true';
             el('terminalBootText').textContent+='\n> SIGNAL NOISE / RETRY...';
             terminalBootTimer=setTimeout(()=>{delete modal.dataset.glitch;step();},160);return;
         }
         if(index<text.length) terminalBootTimer=setTimeout(step,18);
-        else terminalBootTimer=setTimeout(()=>{if(token===terminalBootToken)finishTerminalBoot();},240);
+        else terminalBootTimer=setTimeout(()=>{if(token===terminalBootToken)finishTerminalBoot();},typeof terminalOperator!=='undefined' && terminalOperator.sessions<=1 && !terminalCursorEnabled?900:240);
     };
     terminalBootTimer=setTimeout(step,kind==='renewal'?650:320);
     return true;
@@ -205,6 +207,7 @@ function startTerminalBoot(kind = 'startup') {
 function launchCityTerminal() {
     if(gameStarted) return;
     closeIntroModal({deferOffline:true});
+    if(gameStarted && typeof terminalBeginOperatorSession==='function')terminalBeginOperatorSession();
     if(gameStarted && !startTerminalBoot())showOfflineModal();
 }
 function terminalGlitch() {
@@ -290,16 +293,18 @@ function terminalTransmission(message) {
     };
     if(animated)step();else terminalToastTimer=setTimeout(()=>node.classList.remove('show'),2000);
 }
-function openZoneHelp() {
-    if(!gameStarted || window.LastCityCloud?.isSwitching?.() || ['terminalBootModal','introModal','accountModal','feedbackModal','loreModal','hatchModal','petMergeModal','renewalModal'].some(id=>el(id)?.open) || game.showOfflineModal)return false;
+function openZoneHelp(topic='zones',inline=false,zone=currentStageView) {
+    if((!gameStarted && !inline) || window.LastCityCloud?.isSwitching?.() || el('terminalBootModal')?.open || (!inline && ['introModal','accountModal','feedbackModal','loreModal','hatchModal','petMergeModal','renewalModal'].some(id=>el(id)?.open)) || game.showOfflineModal)return false;
+    if(typeof terminalManualReturnFocus!=='undefined' && !el('zoneHelpModal')?.open)terminalManualReturnFocus=document.activeElement;
+    if(typeof terminalRememberScreen==='function')terminalRememberScreen();
     if(typeof glyphAuto!=='undefined' && glyphAuto)stopGlyphAuto('Auto-roll paused for the field manual.');
     if(typeof autoHatchSession!=='undefined' && autoHatchSession)stopAutoHatch('Auto hatch paused for the field manual.');
-    if(typeof renderTerminalManual==='function')renderTerminalManual('zones');
+    if(typeof renderTerminalManual==='function')renderTerminalManual(typeof topic==='string'?topic:'zones',zone);
     else {const help=TERMINAL_HELP[currentStageView];el('zoneHelpTitle').textContent=help[0]+' · Field manual';
     el('zoneHelpContent').innerHTML=help.slice(1).map((text,i)=>'<section><h3>'+['Currencies','How this zone works','Your next run'][i]+'</h3><p>'+text+'</p></section>').join('');}
-    el('zoneHelpModal').showModal();el('zoneHelpModal').scrollTop=0;el('zoneHelpClose')?.focus?.({preventScroll:true});return true;
+    if(!el('zoneHelpModal').open)el('zoneHelpModal').showModal();el('zoneHelpModal').scrollTop=0;el('zoneHelpClose')?.focus?.({preventScroll:true});return true;
 }
-function closeZoneHelp() {el('zoneHelpModal')?.close?.();el('zoneHelpButton')?.focus?.({preventScroll:true});}
+function closeZoneHelp() {el('zoneHelpModal')?.close?.();let focus=typeof terminalManualReturnFocus!=='undefined'?terminalManualReturnFocus:null;if(focus?.closest?.('details:not([open])'))focus=focus.closest('details').querySelector('summary');(focus?.isConnected!==false && focus?.focus?focus:el('zoneHelpButton'))?.focus?.({preventScroll:true});}
 function terminalProgress(id,value,label,indeterminate=false) {
     const node=el(id);if(!node)return;
     if(indeterminate)node.removeAttribute?.('value');else node.value=Math.min(100,Math.max(0,value));
@@ -391,6 +396,7 @@ function refreshTerminalTooltips() {
     const actions={search:'Search this site for Scrap and milestone keys. All sites share a cooldown.',component:'Select this engine piece in recipe order; selecting a wrong piece clears the assembly.',assemble:'Pay the listed Parts input cost and begin a timed engine order.',deliver:'Collect the completed order payout, including its input refund.',tower:'Build a relay tower once its pickup and Circuit requirements are met.',channel:'Generate Cores to power shields and cannon shots.',fire:'Spend the shown Cores for a cannon shot at the exposed Guardian.',shield:'Disable this shield after meeting its requirements.',beacon:'Permanently improve the City beacon. Beacon modules survive renewal.',unlock:'Open the next zone once the displayed quest and funding requirements are complete.'};
     const pets={hatch:'Pay once to collect one randomly drawn companion. Skipping the reveal does not reroll it.',equip:'Equip one owned copy. Up to three copies per zone contribute power.',unequip:'Remove one equipped copy; it stays in your inventory.',merge:'Choose duplicate copies to attempt a Gold conversion. Confirm the odds and losses before proceeding.',best:'Equip the strongest three owned copies in this zone.',boost:'Buy a timed resource booster for this zone; prices and odds are unchanged.'};
     const upgradeDefinitions={...TECH_UPGRADES,...REBIRTH_UPGRADES,...STAGE2_UPGRADES,...STAGE3_UPGRADES,...STAGE4_UPGRADES,...STAGE5_UPGRADES,...STAGE2_RESET_UPGRADES,...STAGE3_RESET_UPGRADES,...STAGE4_RESET_UPGRADES,...STAGE5_RESET_UPGRADES};
+    Object.assign(descriptions,{reconToggle:'Open the read-only Ashfall density survey. Exact counts stay underneath.',reconBuildButton:'Navigate to Ashfall Buildings; this button spends nothing.',reconManualButton:'Read Ashfall mechanics and Recon controls in the field manual.'});
     for(const n of document.querySelectorAll('button,summary,.resource-card,.stat-lines > div,.pet-art,.wallet-item,[id^="stat"],#walletBalance,#walletRate,#walletTokens,#walletLuck')){
         const text=(n.getAttribute('aria-label')||n.textContent||'').replace(/\s+/g,' ').trim();
         const def=upgradeDefinitions[n.dataset.economyUpgrade] || INFRASTRUCTURE[currentStageView]?.[n.dataset.choice];
@@ -398,10 +404,11 @@ function refreshTerminalTooltips() {
         const detail=descriptions[n.id] || (def?def.name+' — '+def.desc+'. Buy at the displayed price; the gain preview includes current bonuses.':null) || actions[n.dataset.action] || pets[n.dataset.petAction] || (statLabel?statLabel+'. Current value recorded for this city.':n.matches('.pet-art')?'Companion artwork. Each equipped copy adds its stated resource power.':text.slice(0,300));
         if(n.dataset.mode)n.title={city:'Play the current zone activity.',upgrades:'Browse Buildings, Tools and permanent Research.',glyphs:'Draw capped permanent glyphs and improve glyph research.',companions:'Hatch, equip and merge companion copies.',stories:'Read and replay earned chapters without losing progression.',stats:'Inspect lifetime records and earned badges.'}[n.dataset.mode];
         else if(n.dataset.stage)n.title=n.classList.contains('locked')?'Locked: '+ZONES[Math.max(1,Number(n.dataset.stage)-1)].quest:'Travel to '+ZONES[Number(n.dataset.stage)].name;
-        else if(detail)n.title=(detail.length>115?detail.slice(0,110).replace(/\s+\S*$/,'')+'… See Manual.':detail)+(n.classList.contains('maxed')?' — Maxed.':n.disabled?' — Check requirements.':'');
+        else if(detail)n.title=(detail.length>115?detail.slice(0,110).replace(/\s+\S*$/,'')+'… See Manual.':detail)+(n.classList.contains('maxed')?' — Maxed.':n.disabled?' — Check requirements.':'')+(typeof terminalHashHint==='function'?terminalHashHint(n):'');
     }
 }
 function initTerminalUI() {
+    if(typeof initReconMap==='function')initReconMap();
     if(typeof initTerminalPersonality==='function')initTerminalPersonality();
     el('terminalBootSkip')?.addEventListener('click',()=>finishTerminalBoot());
     el('terminalBootModal')?.addEventListener('cancel',event=>{event.preventDefault();finishTerminalBoot();});

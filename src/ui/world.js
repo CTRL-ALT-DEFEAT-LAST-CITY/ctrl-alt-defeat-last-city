@@ -170,6 +170,7 @@ function scheduleLorePopup() {
 function switchGameMode(mode) {
     if (!["city", "upgrades", "stats", "companions", "stories", "glyphs"].includes(mode) || window.LastCityCloud?.isSwitching?.()) return;
     const changed = currentGameMode !== mode;
+    if(changed && typeof terminalRememberScreen==='function')terminalRememberScreen();
     currentGameMode = mode;
     ["upgrades", "stats", "companions", "stories", "glyphs"].forEach(name => document.body.classList.toggle(name + "-open", mode === name));
     gameModeTabs.forEach(tab => { tab.classList.toggle("active", tab.dataset.mode === mode); tab.setAttribute("aria-pressed", String(tab.dataset.mode === mode)); });

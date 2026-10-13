@@ -1,0 +1,100 @@
+/* Field-emitter survey: bounded SVG clusters on a chamfered holographic plane. */
+.recon-map { color:#b6dac7; background:#07110ee8; border:1px solid #466451; font-family:ui-monospace,monospace; min-width:0; grid-column:2; scroll-margin-top:calc(var(--wallet-offset,76px) + 66px); }
+.recon-map[hidden] { display:none !important; }
+.recon-map > summary { display:flex; align-items:center; flex-wrap:wrap; gap:10px 18px; padding:14px 16px; min-height:48px; cursor:pointer; list-style:none; font-size:11px; letter-spacing:.06em; }
+.recon-map > summary::-webkit-details-marker { display:none; }
+.recon-map > summary > span:first-child { color:#c8f5da; font-weight:700; }
+#reconSummary { margin-left:auto; color:#86ad94; font-size:10px; }
+.recon-open-label { color:#c1e2cb; }
+.recon-map[open] .recon-open-label { font-size:0; }
+.recon-map[open] .recon-open-label::after { content:'[ CLOSE ]'; font-size:11px; }
+.recon-content { padding:0 20px 20px; border-top:1px solid #294b38; }
+.recon-heading { display:flex; justify-content:space-between; gap:12px; margin-top:20px; }
+.recon-heading p { font:9px/1.6 ui-monospace,monospace; letter-spacing:.14em; color:#89b49c; margin:0 0 5px; }
+.recon-heading h2 { font:700 clamp(14px,2vw,20px)/1.5 ui-monospace,monospace; color:#c9eed7; margin:0; }
+#reconSignal { font:9px/1.6 ui-monospace,monospace; color:#8eb79e; text-align:right; }
+.recon-projection { position:relative; perspective:1050px; isolation:isolate; width:100%; max-width:940px; margin:0 auto; aspect-ratio:800/490; overflow:hidden; background:radial-gradient(ellipse at 50% 80%,#a5f8c80b,transparent 58%); }
+.recon-plane { position:absolute; inset:0; transform:rotateX(calc(42deg + var(--recon-hover-x,0deg))) rotateZ(var(--recon-hover-z,0deg)); transform-origin:50% 60%; color:#a9dfc1; }
+.recon-plane svg { display:block; width:100%; height:100%; overflow:visible; }
+.recon-outline { fill:#071c15; fill-opacity:.86; stroke:#98d9b1; stroke-width:1.7; }
+.recon-plane-under { fill:#8fcdaa; fill-opacity:.1; stroke:#7bab91; stroke-opacity:.45; }
+.recon-edge-glint { fill:none; stroke:#d0f8de; stroke-width:2; stroke-opacity:.75; }
+.recon-edge-fringe { fill:none; stroke-width:1.3; opacity:.15; pointer-events:none; }.fringe-red { stroke:#ee867e; }.fringe-blue { stroke:#71bfea; }
+.recon-dust-haze { fill:url(#reconDust); color:#c9f5d8; opacity:.15; pointer-events:none; animation:reconDustDrift 19s ease-in-out infinite alternate; }
+#reconDust circle { fill:currentColor; }
+@keyframes reconDustDrift { from { transform:translate(-3px,2px); } to { transform:translate(5px,-3px); } }
+.recon-refraction { fill:none; stroke:#e8fff1; stroke-width:2; opacity:.22; pointer-events:none; }
+.recon-ghost-plots { fill:#a0c9af; fill-opacity:.03; stroke:#9ccbb0; stroke-width:.8; stroke-dasharray:2 4; opacity:.3; animation:reconGhostDecay 30s linear both; pointer-events:none; }
+@keyframes reconGhostDecay { from { opacity:.3; } to { opacity:0; } }
+[data-recon-sector] { cursor:pointer; outline:none; }
+[data-recon-sector]:is(:hover,:focus-visible) :is(.recon-sector-bed,.recon-plinth) { stroke:#e1ffea; stroke-width:2; stroke-dasharray:none; fill-opacity:.12; }
+.recon-roads { fill:none; stroke:#719b81; stroke-width:1; stroke-dasharray:4 6; opacity:.5; }
+.recon-sector-bed { fill:#91d7ae; fill-opacity:.025; stroke:#608a72; stroke-width:1; stroke-dasharray:2 5; }
+.recon-density-bed { fill:#9ff7bf; }
+.recon-roof { fill:#b1edc9; fill-opacity:.6; stroke:#d2ffe2; stroke-width:.8; }
+.recon-side { fill:#71ab8a; fill-opacity:.35; stroke:#a2dabb; stroke-width:.5; }
+.recon-side-dark { fill:#456a58; stroke:#82c49d; stroke-width:.7; }
+.recon-window { stroke:#e0ffeb; stroke-width:1.3; opacity:.75; }
+.recon-sector-code { fill:#bce7cd; font:10px ui-monospace,monospace; letter-spacing:.08em; }
+.recon-plinth { fill:#b2ffcc; fill-opacity:.07; stroke:#97caaa; stroke-width:1; }
+.recon-mast { fill:none; stroke:#c7f9dc; stroke-width:2; }
+.recon-beacon:not(.occupied) { opacity:.7; }
+.recon-beacon-module { fill:#344d3e; stroke:#89b89c; stroke-width:.8; }
+.recon-beacon-module.active { fill:#d0ffdf; }
+.recon-beacon-tip { fill:#c6ffdc; }
+.recon-heartbeat-halo { fill:#c4ffda; fill-opacity:.08; stroke:#b3f5cb; stroke-opacity:.35; stroke-width:1; transform-box:fill-box; transform-origin:center; animation:reconHeartbeat 3.8s ease-in-out infinite; }
+.recon-beacon-tip { animation:reconTipHeartbeat 3.8s ease-in-out infinite; }
+@keyframes reconHeartbeat { 0%,70%,100% { transform:scale(.8); opacity:.3; } 18% { transform:scale(1.3); opacity:.65; } 35% { transform:scale(.95); opacity:.4; } 45% { transform:scale(1.15); opacity:.55; } }
+@keyframes reconTipHeartbeat { 0%,70%,100% { opacity:.65; } 18%,45% { opacity:1; } }
+.recon-module-link { fill:none; stroke:#a7d5b7; stroke-width:1.2; opacity:.09; }
+.recon-module-link.active { stroke:#d0ffe0; stroke-dasharray:3 7; opacity:.65; animation:reconSignalFlow 3s linear infinite; }
+.recon-signal-line { fill:none; stroke:#a4d4b5; stroke-width:1; stroke-dasharray:3 11; opacity:.04; }
+.recon-signal-line.active { opacity:var(--signal-strength,.15); animation:reconSignalFlow 5s linear infinite; }
+.recon-civic-link { fill:none; stroke:#c0edd0; stroke-width:1.2; opacity:.32; }
+@keyframes reconSignalFlow { to { stroke-dashoffset:-40; } }
+.recon-floor { stroke:#c7edd5; stroke-width:.7; opacity:.48; }
+.recon-tent-seam { fill:none; stroke:#d8ffe5; stroke-width:.7; opacity:.65; }
+.recon-chimney { fill:#496b57; stroke:#b5dbc2; stroke-width:1; }
+.recon-coil { fill:none; stroke:#d3ffe4; stroke-width:1.4; opacity:.65; }
+.recon-energy-core { fill:none; stroke:#e3ffed; stroke-width:2; animation:reconTipHeartbeat 4s ease-in-out infinite; }
+[data-recon-shape="tent"] .recon-roof { fill-opacity:.4; }
+[data-recon-shape="shed"] .recon-roof { fill-opacity:.48; }
+[data-recon-shape="stack"] .recon-roof { fill-opacity:.86; }
+[data-recon-sector][data-confirmed="true"] .recon-sector-bed { stroke:#94c5a4; }
+[data-recon-sector][data-confirmed="true"] .recon-plinth { stroke:#b3d7bf; stroke-width:1.4; }
+.recon-placement-wave { fill:none; stroke:#c9ffdd; stroke-width:1.5; opacity:0; transform-box:fill-box; transform-origin:center; animation:reconPlacementWave .8s ease-out both; pointer-events:none; }
+@keyframes reconPlacementWave { 0% { transform:scale(.3); opacity:.5; } 100% { transform:scale(5); opacity:0; } }
+.recon-bloom-wash { fill:#daffe6; opacity:0; pointer-events:none; }
+.recon-surface-rings circle { fill:none; stroke:#b2ffce; stroke-width:1; opacity:.04; transform-origin:401px 210px; animation:reconRings 7s linear infinite; }
+.recon-surface-rings circle:nth-child(2) { animation-delay:-2.3s; }.recon-surface-rings circle:nth-child(3) { animation-delay:-4.6s; }
+@keyframes reconRings { 0% { transform:scale(.2); opacity:.18; } 100% { transform:scale(1.7); opacity:0; } }
+.recon-sweep { animation:reconSweep 8s linear infinite; pointer-events:none; mix-blend-mode:screen; }
+@keyframes reconSweep { 0%,18% { transform:translateY(0); opacity:0; } 22% { opacity:1; } 85% { transform:translateY(620px); opacity:1; } 90%,100% { transform:translateY(620px); opacity:0; } }
+.recon-emitter { position:absolute; bottom:3%; left:50%; transform:translateX(-50%); width:110px; text-align:center; pointer-events:none; }
+.recon-emitter i { display:block; width:50px; height:9px; margin:0 auto 10px; border:1px solid #a7d8ba; border-top:2px solid #d2ffe2; background:#153023; box-shadow:0 -12px 25px 4px #b0f4cb14; animation:reconEmitter 5s ease-in-out infinite; }
+.recon-emitter::before { content:''; position:absolute; bottom:24px; left:20px; width:70px; height:90px; background:linear-gradient(0deg,#b7ffd51a,transparent); clip-path:polygon(42% 100%,0 0,100% 0,58% 100%); }
+.recon-emitter span,.recon-bearing { font:8px ui-monospace,monospace; color:#87b098; letter-spacing:.08em; }
+.recon-bearing { position:absolute; top:9%; right:2%; border-top:1px solid #799e85; padding-top:5px; }
+@keyframes reconEmitter { 50% { opacity:.5; box-shadow:0 -12px 30px 6px #b0f4cb22; } }
+.recon-caption { margin:4px 0 18px; font:10px/1.8 ui-monospace,monospace; color:#8cac98; }
+.recon-telemetry { display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:10px; padding:14px 0; border-block:1px solid #385342; }
+.recon-telemetry span { display:block; font:8px/1.8 ui-monospace,monospace; color:#87af98; letter-spacing:.05em; }
+.recon-telemetry strong { display:block; color:#c3f0d2; font:700 clamp(14px,2.6vw,22px)/1.6 ui-monospace,monospace; overflow-wrap:anywhere; }
+.recon-growth { margin:16px 0; }.recon-growth label { display:block; font:10px/1.7 ui-monospace,monospace; color:#a1c6b0; margin-bottom:7px; overflow-wrap:anywhere; }
+.recon-growth progress { width:100%; height:4px; border:0; background:#152c20; accent-color:#a4d8b5; display:block; }.recon-growth progress::-webkit-progress-bar { background:#152c20; }.recon-growth progress::-webkit-progress-value { background:#a4d8b5; }
+.recon-inventory { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 24px; list-style:none; padding:0; margin:0; }
+.recon-inventory li { display:flex; align-items:center; justify-content:space-between; gap:10px; border-bottom:1px dashed #344d3d; padding:12px 0; font-size:12px; min-width:0; }.recon-inventory small { display:block; color:#7f9f8a; font-size:8px; margin-top:5px; }.recon-inventory strong { color:#caedd6; font-size:13px; overflow-wrap:anywhere; text-align:right; }
+.recon-inventory li { --recon-row-color:#739c83; padding:0; }
+.recon-inventory li[data-tier="1"] { --recon-row-color:#89b89c; }.recon-inventory li[data-tier="2"] { --recon-row-color:#9fd3b2; }.recon-inventory li[data-tier="3"] { --recon-row-color:#b3e6c5; }.recon-inventory li[data-tier="4"] { --recon-row-color:#c2efd3; }.recon-inventory li[data-tier="5"] { --recon-row-color:#d2ffe1; }.recon-inventory li[data-tier="6"] { --recon-row-color:#e9fff0; }
+.recon-inventory button { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 10px; width:100%; min-height:70px; padding:12px 2px; background:transparent; border:0; text-align:left; color:var(--recon-row-color); font:12px ui-monospace,monospace; cursor:pointer; }
+.recon-inventory button:is(:hover,:focus-visible) { background:#b7f5cc09; outline:1px solid #88b698; outline-offset:-1px; }
+.recon-inventory progress { grid-column:1/-1; width:100%; height:3px; appearance:none; border:0; accent-color:var(--recon-row-color); background:#152c20; }
+.recon-inventory progress::-webkit-progress-bar { background:#152c20; }.recon-inventory progress::-webkit-progress-value { background:var(--recon-row-color); }
+.recon-inventory .recon-tier-target { grid-column:1/-1; margin:0; font-size:8px; color:var(--recon-row-color); }
+.recon-purchase-echo { margin:0 0 8px; border-left:2px solid var(--recon-ack-color,#a8daba); padding:4px 8px; color:var(--recon-ack-color,#a8daba); font:10px/1.6 ui-monospace,monospace; overflow-wrap:anywhere; }
+.recon-purchase-echo[hidden],#reconGhostStatus[hidden] { display:none !important; }
+.recon-placement { font:10px/1.8 ui-monospace,monospace; color:#b3dec4; min-height:20px; margin:16px 0; }.recon-actions { display:flex; gap:10px; flex-wrap:wrap; }.recon-actions button { font:11px ui-monospace,monospace; min-height:44px; padding:10px 14px; border:1px solid #60836d; background:#11261a; color:#bfe0cb; }
+.recon-map:not([data-live="true"]) :is(.recon-sweep,.recon-surface-rings circle,.recon-emitter i,.recon-heartbeat-halo,.recon-beacon-tip,.recon-module-link,.recon-signal-line,.recon-energy-core,.recon-dust-haze,.recon-ghost-plots) { animation:none; }.recon-map:not([data-live="true"]) .recon-sweep { opacity:0; }.recon-map:not([data-live="true"]) .recon-edge-fringe { opacity:0; }
+@media(max-width:900px) { .recon-map { grid-column:1 / -1; } }
+@media(max-width:600px) { .recon-content { padding:0 12px 16px; }.recon-heading { flex-direction:column; gap:4px; }#reconSignal { text-align:left; }.recon-projection { aspect-ratio:800/560; }.recon-bearing { font-size:7px; top:14%; }.recon-telemetry { gap:8px; }.recon-inventory { grid-template-columns:1fr; }.recon-map > summary { padding:12px; gap:8px; }#reconSummary { margin-left:0; width:100%; order:3; }.recon-open-label { margin-left:auto; }.recon-inventory li { padding:10px 0; } }
+@media(prefers-reduced-motion:reduce) { .recon-sweep,.recon-surface-rings circle,.recon-emitter i,.recon-heartbeat-halo,.recon-beacon-tip,.recon-module-link,.recon-signal-line,.recon-energy-core,.recon-placement-wave,.recon-dust-haze,.recon-ghost-plots { animation:none !important; }.recon-sweep,.recon-placement-wave,.recon-edge-fringe { display:none; }.recon-plane { transform:rotateX(42deg); } }

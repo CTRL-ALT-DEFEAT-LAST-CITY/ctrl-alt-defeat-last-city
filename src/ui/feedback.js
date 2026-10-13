@@ -93,6 +93,7 @@ async function flushFeedback() {
                 lastSubmissionId: record.payload.p_id, rewardClaimed: true,
                 boostSeconds: game.feedback.rewardClaimed ? game.feedback.boostSeconds : 120 };
             // Commit claim + timer together before changing live reward state.
+            if(typeof terminalCanWriteState==='function' && !terminalCanWriteState())throw Error('Damaged device state retained. Free storage before committing the reward.');
             localStorage.setItem(saveKey, JSON.stringify({ ...game, feedback, lastSeen: Date.now() }));
             game.feedback = feedback; startupSaveAvailable = true;
             window.LastCityCloud?.onSave?.(false);

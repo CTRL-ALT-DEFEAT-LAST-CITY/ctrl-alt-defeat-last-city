@@ -95,8 +95,10 @@ function handleProgressionAction(stage, action, choice, automatic = false) {
     if (action === "infrastructure") { buyInfrastructure(stage, choice); return true; }
     if (stage === 1 && action === "beacon") {
         if (p.beaconModules >= 3 || game.salvage < beaconCost()) return true;
+        const reconBefore = typeof reconMapSnapshot === 'function' ? reconMapSnapshot() : null;
         game.salvage -= beaconCost();
         p.beaconModules++;
+        if (reconBefore) recordReconMapPlacement(reconBefore, 'beacon');
         celebrateUpgrade();
     } else if (stage === 3 && action === "component") {
         if (p.production || !["Gear", "Spring", "Plate"].includes(choice)) return true;

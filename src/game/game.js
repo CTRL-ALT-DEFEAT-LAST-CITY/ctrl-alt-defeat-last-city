@@ -503,6 +503,7 @@ function buyBuilding(type) {
         showNotification("Not enough Salvage!");
         return;
     }
+    const reconBefore = typeof reconMapSnapshot === 'function' ? reconMapSnapshot() : null;
     game.salvage -= batch.total;
     game.buildings[type] += batch.count;
     game.totalBuildingsBuilt += batch.count;
@@ -511,6 +512,7 @@ function buyBuilding(type) {
     spawnBurst(el("buy" + type.charAt(0).toUpperCase() + type.slice(1)), "#65baff", 12);
     updateGame();
     terminalPurchase(el("buy" + type.charAt(0).toUpperCase() + type.slice(1)));
+    if (reconBefore) recordReconMapPlacement(reconBefore, type);
     saveGame(false);
 }
 
@@ -590,6 +592,7 @@ function doRebirth() {
         return;
     }
 
+    const reconBeforeRenewal = typeof reconMapSnapshot === 'function' ? reconMapSnapshot() : null;
     const gained = calculateRebirthShards();
     if (glyphAuto) stopGlyphAuto("Auto-roll stopped by city renewal.");
     celebrateEvent("rebirth", "A new legacy begins", `Rebirth ${formatNumber(game.rebirths + 1)} · ×2 permanent Salvage · +${formatNumber(gained)} Shards`);
@@ -620,6 +623,7 @@ function doRebirth() {
     game.totalSalvage = 0;
 
     if (game.rebirthUpgrades.headStart > 0) { game.salvage = 1000; game.buildings.scavenger = Math.max(1, game.buildings.scavenger); }
+    if (reconBeforeRenewal) recordReconRenewal(reconBeforeRenewal);
 
     showNotification(`Rebirth! +${gained} Salvage Shards.`);
 
@@ -786,6 +790,7 @@ energyButton.addEventListener("click", function () {
     game.totalSalvage += click;
     game.lifetimeSalvage += click;
     game.totalClicks++;
+    if(typeof terminalRegisterManualClick==='function')terminalRegisterManualClick();
     if (isCritical) game.criticalClicks++;
     game.highestCombo = Math.max(game.highestCombo, game.combo);
     const feedbackAnchor=gatherFeedbackAnchor || energyButton;
@@ -848,6 +853,7 @@ stageTabs.forEach(tab => {
         if (stage === currentStageView) return;
 
         const previousStage=currentStageView;
+        if(typeof terminalRememberScreen==='function')terminalRememberScreen();
         currentStageView = stage;
         game.lastStageView = stage;
         stageTabs.forEach(t => t.setAttribute("aria-pressed", String(Number(t.dataset.stage) === stage)));
@@ -1135,6 +1141,7 @@ function updateGame() {
     renderCityVisual();
     renderAdventure();
     renderWorldUI();
+    if (typeof renderReconMap === 'function') renderReconMap();
     renderGlyphs();
     renderPlayerUI();
     refreshTerminalUI();
@@ -1463,13 +1470,21 @@ function renderResetUpgrades() {
 // =============================================
 
 function getSaveKey() {
-    return window.LastCityCloud ? window.LastCityCloud.getSaveKey() : SAVE_KEY;
+    return window.LastCityCloud?.getSaveKey?.() || SAVE_KEY;
 }
 
 function saveGame(showMsg = true) {
+    if(window.LastCityCloud?.isSwitching?.())return;
+    if(typeof terminalCanWriteState==='function' && !terminalCanWriteState()){
+        if(el('autoSaveIndicator'))el('autoSaveIndicator').textContent='● Device state retained · save paused';
+        if(showMsg)showNotification('ERROR: Device state retained. Free storage or reload before saving.');
+        return;
+    }
     game.lastSeen = Date.now();
+    let serializedState;
     try {
-        localStorage.setItem(getSaveKey(), JSON.stringify(game));
+        serializedState=JSON.stringify(game);
+        localStorage.setItem(getSaveKey(), serializedState);
         startupSaveAvailable = true;
         terminalProgressSavedAt=Date.now();
     } catch (error) {
@@ -1477,6 +1492,7 @@ function saveGame(showMsg = true) {
         window.LastCityCloud?.onSave(showMsg);
         return;
     }
+    const writtenMessage=typeof terminalStateWritten==='function'?terminalStateWritten(serializedState,showMsg):'Game saved!';
     window.LastCityCloud?.onSave(showMsg);
     const indicator = el("autoSaveIndicator");
     if (indicator) {
@@ -1484,7 +1500,7 @@ function saveGame(showMsg = true) {
         indicator.classList.add("saved");
         setTimeout(() => { indicator.textContent = "● Auto-save ready"; indicator.classList.remove("saved"); }, 1400);
     }
-    if (showMsg) showNotification("Game saved!");
+    if (showMsg) showNotification(writtenMessage);
     if (!gameStarted) renderStartupPage();
 }
 
@@ -1500,7 +1516,9 @@ function loadGame(snapshot) {
     glyphManualReadyAt = 0;
     glyphMessage = "Auto-roll is off. Choose when to spend your currency.";
     if (autoHatchSession) stopAutoHatch("Auto hatch stopped when loading a save.");
-    const saved = snapshot === undefined ? localStorage.getItem(getSaveKey()) : snapshot;
+    let saved,readFailed=false;
+    try{saved=snapshot===undefined?localStorage.getItem(getSaveKey()):snapshot;}catch(_){readFailed=true;}
+    if(typeof terminalResolveState==='function')saved=terminalResolveState(saved,snapshot===undefined,readFailed);
     if (!saved) {
         game = JSON.parse(JSON.stringify(defaultGame));
         game.lastSeen = Date.now();
@@ -1545,6 +1563,7 @@ function loadGame(snapshot) {
         try { applyOfflineProgress(); } finally { feedbackOfflineCalculation = false; }
     } catch (e) {
         console.error(e);
+        if(typeof terminalStateInfo!=='undefined'){terminalStateInfo.damage=true;terminalStateInfo.backup=false;terminalStateInfo.status='damaged';}
         game = JSON.parse(JSON.stringify(defaultGame));
         startupSaveAvailable = false;
     }
@@ -1565,6 +1584,7 @@ function resetAllProgress() {
     glyphMessage = "Auto-roll is off. Choose when to spend your currency.";
     if (autoHatchSession) stopAutoHatch("Auto hatch stopped by full reset.");
     localStorage.removeItem(getSaveKey());
+    if(typeof terminalClearCityJournal==='function')terminalClearCityJournal();
     game = JSON.parse(JSON.stringify(defaultGame));
     stopAmbientAudio();
     closeStartupPanels();
@@ -1702,21 +1722,22 @@ function showNotification(msg) {
 function playSfx(type = "click") {
     if (!game.soundEnabled || document.hidden || window.LastCityCloud?.isSwitching?.() || !(window.AudioContext || window.webkitAudioContext)) return;
     try {
-        const now=Date.now(), cooldown={ui:60,click:70,beep:250,failure:250,hatch:500,rebirth:1000}[type] || 120;
+        const now=Date.now(), cooldown={ui:60,click:70,beep:250,failure:250,hatch:500,rebirth:1000,reconPlace:160,reconTier:400,reconSweep:2000,reconBloom:1000}[type] || 120;
         if(sfxVoices.size+(type==='hatch'?3:type==='travel'?2:1)>12 || now-(sfxLastTimes.get(type)??-Infinity)<cooldown)return;
         sfxLastTimes.set(type,now);
         audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
         if (audioContext.state === "suspended") audioContext.resume()?.catch?.(()=>{});
         const notes = { click:[110,.12,'triangle'],clack:[95,.055,'square'],ui:[440,.035,'sine'],beep:[660,.055,'sine'],failure:[85,.1,'sawtooth'],boot:[240,.16,'sine'],travel:[190,.25,'sine'],rebirth:[55,.5,'triangle'],hatch:[261.63,.45,'sine'],build:[140,.14,'triangle'],upgrade:[180,.16,'triangle'],critical:[900,.14,'sine'],dispatch:[500,.18,'triangle'] };
-        const [frequency, duration, wave] = notes[type] || notes.click;
+        const reconNotes={reconPlace:[100,.09,'triangle'],reconTier:[720,.14,'sine'],reconSweep:[220,.28,'sine'],reconBloom:[392,.35,'sine']};
+        const [frequency, duration, wave] = reconNotes[type] || notes[type] || notes.click;
         const oscillator = audioContext.createOscillator();
         const gain = audioContext.createGain();
         oscillator.type = wave;
         oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
-        if (type === "upgrade" || type === "dispatch") oscillator.frequency.exponentialRampToValueAtTime(frequency * 1.5, audioContext.currentTime + duration);
+        if (type === "upgrade" || type === "dispatch" || type==='reconTier' || type==='reconSweep' || type==='reconBloom') oscillator.frequency.exponentialRampToValueAtTime(frequency * 1.5, audioContext.currentTime + duration);
         else oscillator.frequency.exponentialRampToValueAtTime(frequency*(type==='critical'?2:type==='travel'?1.8:.45),audioContext.currentTime+duration);
         gain.gain.setValueAtTime(.0001, audioContext.currentTime);
-        gain.gain.exponentialRampToValueAtTime(.045, audioContext.currentTime + .01);
+        gain.gain.exponentialRampToValueAtTime(reconNotes[type]?(type==='reconSweep'?.006:.012):.045, audioContext.currentTime + .01);
         gain.gain.exponentialRampToValueAtTime(.0001, audioContext.currentTime + duration);
         oscillator.connect(gain).connect(audioContext.destination);
         oscillator.start();
