@@ -1,5 +1,5 @@
 // The title page owns its presentation, optional audio and explicit daily claim.
-const LAST_CITY_BUILD = { version: '1.0.8-dev', date: '2026.10.13', channel: 'Local review' };
+const LAST_CITY_BUILD = { version: '1.0.3-dev', date: '2026.10.11', channel: 'Local review' };
 let startupSaveAvailable = false, ambientAudioArmed = false, ambientLoop = null, dailyClaimError = '';
 
 function normalizeDailyReward(saved = {}) {
@@ -25,7 +25,7 @@ function claimDailyReward() {
     if (![values.salvage, values.totalSalvage, values.lifetimeSalvage].every(Number.isFinite)) return false;
     // Persist the complete wallet + claim together before crediting the live game.
     // Failed storage doesn't grant a crate that can be claimed again on refresh.
-    try { if(typeof terminalCanWriteState==='function' && !terminalCanWriteState())throw Error('Damaged state is protected');localStorage.setItem(getSaveKey(), JSON.stringify({ ...game, ...values })); }
+    try { localStorage.setItem(getSaveKey(), JSON.stringify({ ...game, ...values })); }
     catch (_) { dailyClaimError = 'Storage unavailable. Nothing was credited; try again later.'; el('dailyRewardStatus').textContent = dailyClaimError; return false; }
     Object.assign(game, values);
     dailyClaimError = '';
@@ -39,7 +39,7 @@ function renderStartupPage() {
     const stage = [5, 4, 3, 2, 1].find(isZoneUnlocked);
     const values = {
         startProgress: startupSaveAvailable ? 'Continue saved city — Rebirth ' + game.rebirths + ' · Stage ' + stage : 'New Game — your first city awaits',
-        startSaveHint: (typeof terminalStateInfo!=='undefined' && terminalStateInfo.writeBlocked?'Device state retained · free storage or reload before saving.':el('cloudSaveStatus')?.textContent || 'Guest play · saved on this device') + (startupSaveAvailable ? ' · ' + formatDuration(game.playTimeSeconds) + ' played' : ''),
+        startSaveHint: (el('cloudSaveStatus')?.textContent || 'Guest play · saved on this device') + (startupSaveAvailable ? ' · ' + formatDuration(game.playTimeSeconds) + ' played' : ''),
         startBuildInfo: 'v' + LAST_CITY_BUILD.version + ' · Build ' + LAST_CITY_BUILD.date + ' · ' + LAST_CITY_BUILD.channel
     };
     for (const [id, value] of Object.entries(values)) if (el(id) && el(id).textContent !== value) el(id).textContent = value;
@@ -91,7 +91,6 @@ function stopAmbientAudio() {
     try { previous.context.close()?.catch?.(() => {}); } catch (_) { }
 }
 function syncAmbientAudio() {
-    if(typeof syncReconAudio==='function')syncReconAudio();
     const Audio = window.AudioContext || window.webkitAudioContext;
     if (!ambientAudioArmed || !game.soundEnabled || game.ambientEnabled !== true || document.hidden
         || window.LastCityCloud?.isSwitching?.() || el('accountModal')?.open || !Audio) { stopAmbientAudio(); return; }

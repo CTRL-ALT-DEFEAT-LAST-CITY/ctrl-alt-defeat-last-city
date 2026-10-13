@@ -1,0 +1,15 @@
+{
+  "name": "last-city",
+  "version": "2.0.0",
+  "private": true,
+  "description": "CTRL + ALT + DEFEAT — LAST CITY. A browser city-building strategy game. No build step and no runtime dependencies.",
+  "scripts": {
+    "test": "node tests/run.js",
+    "test:quick": "node tests/run.js --no-browser",
+    "start": "python3 -m http.server 8000"
+  },
+  "comment": "The game itself has no dependencies and needs no build. The browser test suite can optionally use Playwright: npm install --no-save playwright. Without it those tests report as skipped rather than failing.",
+  "devDependencies": {
+    "playwright": "^1.64.0"
+  }
+}

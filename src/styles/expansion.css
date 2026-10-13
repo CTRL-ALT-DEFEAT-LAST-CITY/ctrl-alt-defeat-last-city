@@ -1,0 +1,484 @@
+/* =============================================
+   LAST CITY · EXPANSION SHARED STYLES
+   CTRL + ALT + DEFEAT
+   ---------------------------------------------
+   Shared tokens, the city service HUD, the tutorial coach, the added settings
+   controls, and the mode-panel visibility rules for the three new tabs.
+   Feature-specific styling lives in citybuilder.css, combat.css, research.css,
+   cinematic.css and companions-plus.css.
+
+   The visibility rules deliberately mirror the pattern the original
+   stylesheet already uses for companions/glyphs/stats, so the new modes behave
+   exactly like the existing ones.
+   ============================================= */
+
+:root {
+    /* Surfaces, carried from the original palette so new panels sit alongside
+       the existing ones rather than looking bolted on. */
+    --x-bg:           #0d1621;
+    --x-bg-raised:    #121d2b;
+    --x-bg-sunken:    #0a1118;
+    --x-line:         #24354a;
+    --x-line-bright:  #35506e;
+
+    --x-text:         #e6eef7;
+    --x-text-dim:     #9fb0c4;
+    --x-text-faint:   #6d7f94;
+
+    /* Semantic accents. Each new system owns one so the player can tell at a
+       glance which subsystem a panel belongs to. */
+    --x-accent:       #65baff;   /* city / general       */
+    --x-research:     #7fd4c1;   /* research             */
+    --x-combat:       #ff7d6b;   /* defense              */
+    --x-power:        #ffc247;   /* power                */
+    --x-food:         #8fcf5f;   /* food                 */
+    --x-security:     #c97d85;   /* security             */
+    --x-pet:          #aa8cff;   /* companions           */
+
+    --x-good:         #5bd69b;
+    --x-warn:         #ffb259;
+    --x-bad:          #ff6b6b;
+
+    --x-radius:       14px;
+    --x-radius-sm:    9px;
+    --x-shadow:       0 18px 40px -24px #000c;
+    --x-inset:        inset 0 1px 0 #ffffff0d;
+
+    /* One duration token so "turn the motion down" is a single change. */
+    --x-fast:         140ms;
+    --x-med:          260ms;
+    --x-slow:         520ms;
+    --x-ease:         cubic-bezier(.22, .68, .32, 1);
+}
+
+/* Any device asking for less motion gets none of the decorative kind. The
+   game's own Effects toggle is handled in JavaScript; this is the OS-level
+   preference, which always wins. */
+@media (prefers-reduced-motion: reduce) {
+    :root { --x-fast: 1ms; --x-med: 1ms; --x-slow: 1ms; }
+    .x-anim, .service-cell, .tutorial-coach { animation: none !important; transition: none !important; }
+}
+
+/* ---------------------------------------------
+   Mode panel visibility
+   --------------------------------------------- */
+
+.city-builder-panel,
+.combat-panel,
+.research-panel {
+    display: none;
+    width: 94%;
+    max-width: 1400px;
+    margin: 0 auto 60px;
+}
+
+body.build-open    .city-builder-panel,
+body.combat-open   .combat-panel,
+body.research-open .research-panel {
+    display: block;
+    animation: xFadeUp var(--x-med) var(--x-ease);
+}
+
+/* The new modes are full-screen views, so the stage panels and the reset dock
+   step aside exactly as they do for the Stats and Companions tabs. */
+body.build-open    .stage-panel, body.build-open    .stage-reset-dock,
+body.combat-open   .stage-panel, body.combat-open   .stage-reset-dock,
+body.research-open .stage-panel, body.research-open .stage-reset-dock {
+    display: none !important;
+}
+
+body.build-open    .milestone-panel, body.build-open    .tutorial-hint,
+body.combat-open   .milestone-panel, body.combat-open   .tutorial-hint,
+body.research-open .milestone-panel, body.research-open .tutorial-hint {
+    display: none;
+}
+
+body.combat-open   .world-banner,
+body.research-open .world-banner { display: none; }
+
+@keyframes xFadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: none; }
+}
+
+/* Locked tabs read as unavailable but stay focusable, so a keyboard user can
+   still reach them and hear why they are locked. */
+.game-mode-tab.locked {
+    opacity: .45;
+    cursor: not-allowed;
+}
+.game-mode-tab.locked .nav-icon::after {
+    content: " 🔒";
+    font-size: .7em;
+}
+
+/* Nine tabs do not fit on a phone. Scroll them instead of wrapping into a
+   second row that pushes the game down the page. */
+.game-mode-tabs {
+    scrollbar-width: thin;
+    scrollbar-color: var(--x-line-bright) transparent;
+}
+@media (max-width: 900px) {
+    .game-mode-tabs {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
+        padding-bottom: 6px;
+    }
+    .game-mode-tabs .game-mode-tab {
+        flex: 0 0 auto;
+        scroll-snap-align: center;
+    }
+    .game-mode-tabs::-webkit-scrollbar { height: 4px; }
+    .game-mode-tabs::-webkit-scrollbar-thumb { background: var(--x-line-bright); border-radius: 4px; }
+}
+
+/* ---------------------------------------------
+   City service HUD
+   The strip of secondary resources shown above the play area.
+   --------------------------------------------- */
+
+.city-service-hud {
+    width: 94%;
+    max-width: 1400px;
+    margin: 0 auto 16px;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.city-service-hud[hidden] { display: none; }
+
+.service-cell {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 11px;
+    border: 1px solid var(--x-line);
+    border-radius: var(--x-radius-sm);
+    background: linear-gradient(180deg, var(--x-bg-raised), var(--x-bg));
+    box-shadow: var(--x-inset);
+    min-width: 0;
+    transition: border-color var(--x-med) var(--x-ease), background var(--x-med) var(--x-ease);
+}
+
+.service-icon {
+    font-size: 1.05rem;
+    line-height: 1;
+    flex: 0 0 auto;
+    filter: saturate(1.1);
+}
+
+.service-copy {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.25;
+}
+
+.service-copy small {
+    font-size: .58rem;
+    letter-spacing: .14em;
+    color: var(--x-text-faint);
+    text-transform: uppercase;
+}
+
+.service-copy strong {
+    font-size: .95rem;
+    color: var(--x-text);
+    font-variant-numeric: tabular-nums;
+}
+
+.service-copy i {
+    font-style: normal;
+    font-size: .62rem;
+    color: var(--x-text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Per-cell accent colouring. */
+.service-cell[data-cell="power"]    .service-copy strong { color: var(--x-power); }
+.service-cell[data-cell="food"]     .service-copy strong { color: var(--x-food); }
+.service-cell[data-cell="security"] .service-copy strong { color: var(--x-security); }
+.service-cell[data-cell="research"] .service-copy strong { color: var(--x-research); }
+
+/* A shortage is the one thing the player must not miss. */
+.service-cell.service-warn {
+    border-color: #7a3b3b;
+    background: linear-gradient(180deg, #2a1a1e, #161014);
+    animation: xWarnPulse 2.4s var(--x-ease) infinite;
+}
+.service-cell.service-warn .service-copy i { color: var(--x-bad); }
+
+@keyframes xWarnPulse {
+    0%, 100% { border-color: #7a3b3b; }
+    50%      { border-color: #b5565a; }
+}
+
+@media (max-width: 1000px) {
+    .city-service-hud { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 620px) {
+    .city-service-hud { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+    .service-cell { padding: 7px 9px; }
+    .service-copy i { display: none; }
+}
+
+/* ---------------------------------------------
+   Tutorial coach
+   --------------------------------------------- */
+
+.tutorial-coach {
+    width: 94%;
+    max-width: 1400px;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 13px 16px;
+    border: 1px solid var(--x-line-bright);
+    border-left: 3px solid var(--x-accent);
+    border-radius: var(--x-radius-sm);
+    background:
+        radial-gradient(circle at 0% 50%, #65baff1f, transparent 55%),
+        linear-gradient(180deg, var(--x-bg-raised), var(--x-bg));
+    box-shadow: var(--x-shadow);
+    animation: xFadeUp var(--x-med) var(--x-ease);
+}
+
+.tutorial-coach[hidden] { display: none; }
+
+.coach-body { flex: 1 1 auto; min-width: 0; }
+
+.coach-body .eyebrow {
+    font-size: .58rem;
+    letter-spacing: .16em;
+    color: var(--x-accent);
+    margin: 0 0 3px;
+}
+
+.coach-body strong {
+    display: block;
+    font-size: .98rem;
+    color: var(--x-text);
+    margin-bottom: 3px;
+}
+
+.coach-body p {
+    margin: 0;
+    font-size: .78rem;
+    color: var(--x-text-dim);
+    line-height: 1.5;
+}
+
+.tutorial-coach button { flex: 0 0 auto; }
+
+@media (max-width: 620px) {
+    .tutorial-coach { flex-direction: column; align-items: stretch; gap: 10px; }
+    .tutorial-coach button { width: 100%; }
+}
+
+/* ---------------------------------------------
+   Added settings controls
+   --------------------------------------------- */
+
+.expansion-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 10px 0 4px;
+    border-top: 1px solid var(--x-line);
+    margin-top: 6px;
+}
+
+.expansion-settings .eyebrow {
+    font-size: .56rem;
+    letter-spacing: .16em;
+    color: var(--x-text-faint);
+    margin: 6px 0 1px;
+}
+
+.expansion-settings p {
+    font-size: .68rem;
+    color: var(--x-text-faint);
+    line-height: 1.45;
+    margin: 2px 0 0;
+}
+
+.expansion-slider {
+    display: grid;
+    grid-template-columns: 4.6rem 1fr 2.6rem;
+    align-items: center;
+    gap: 8px;
+    font-size: .74rem;
+    color: var(--x-text-dim);
+}
+
+.expansion-slider input[type="range"] {
+    width: 100%;
+    accent-color: var(--x-accent);
+    min-height: 22px;
+}
+
+.expansion-slider select {
+    grid-column: 2 / span 2;
+    width: 100%;
+    padding: 5px 7px;
+    border: 1px solid var(--x-line);
+    border-radius: 7px;
+    background: var(--x-bg-sunken);
+    color: var(--x-text);
+    font: inherit;
+    font-size: .74rem;
+}
+
+.expansion-slider output {
+    font-size: .7rem;
+    color: var(--x-text-faint);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------
+   Honest failure state
+   Shown only when a feature script did not load.
+   --------------------------------------------- */
+
+.expansion-missing {
+    padding: 44px 28px;
+    text-align: center;
+    border: 1px dashed var(--x-line-bright);
+    border-radius: var(--x-radius);
+    background: var(--x-bg-sunken);
+}
+.expansion-missing h2 { color: var(--x-warn); margin: 0 0 10px; font-size: 1.1rem; }
+.expansion-missing p  { color: var(--x-text-dim); margin: 0 auto; max-width: 48ch; font-size: .84rem; line-height: 1.6; }
+
+/* ---------------------------------------------
+   Shared building blocks for the new panels
+   --------------------------------------------- */
+
+.x-panel {
+    border: 1px solid var(--x-line);
+    border-radius: var(--x-radius);
+    background: linear-gradient(180deg, var(--x-bg-raised), var(--x-bg));
+    box-shadow: var(--x-shadow), var(--x-inset);
+}
+
+.x-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+.x-heading .eyebrow {
+    font-size: .58rem;
+    letter-spacing: .18em;
+    color: var(--x-text-faint);
+    margin: 0 0 4px;
+}
+.x-heading h2 { margin: 0; font-size: 1.32rem; color: var(--x-text); letter-spacing: .01em; }
+.x-heading p  { margin: 5px 0 0; font-size: .8rem; color: var(--x-text-dim); max-width: 62ch; line-height: 1.55; }
+
+/* Segmented sub-navigation, reused by the city, defense and research panels. */
+.x-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--x-line);
+    border-radius: 11px;
+    background: var(--x-bg-sunken);
+    flex-wrap: wrap;
+}
+.x-tabs button {
+    flex: 1 1 auto;
+    min-width: 5.4rem;
+    padding: 8px 13px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--x-text-dim);
+    font: inherit;
+    font-size: .76rem;
+    letter-spacing: .04em;
+    cursor: pointer;
+    transition: background var(--x-fast) var(--x-ease), color var(--x-fast) var(--x-ease);
+}
+.x-tabs button:hover { color: var(--x-text); background: #ffffff0a; }
+.x-tabs button[aria-pressed="true"] {
+    background: linear-gradient(180deg, #27405c, #1b2d42);
+    color: var(--x-text);
+    box-shadow: var(--x-inset);
+}
+.x-tabs button:focus-visible { outline: 2px solid var(--x-accent); outline-offset: 2px; }
+
+/* Stat readout used across the new panels. */
+.x-stat-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+    gap: 8px;
+}
+.x-stat {
+    padding: 9px 11px;
+    border: 1px solid var(--x-line);
+    border-radius: var(--x-radius-sm);
+    background: var(--x-bg-sunken);
+}
+.x-stat small {
+    display: block;
+    font-size: .56rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--x-text-faint);
+    margin-bottom: 3px;
+}
+.x-stat strong {
+    font-size: 1rem;
+    color: var(--x-text);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Progress meter. --x-progress is set inline by JavaScript. */
+.x-meter {
+    position: relative;
+    height: 6px;
+    border-radius: 999px;
+    background: #0a1016;
+    overflow: hidden;
+    border: 1px solid var(--x-line);
+}
+.x-meter > span {
+    display: block;
+    height: 100%;
+    width: var(--x-progress, 0%);
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--x-accent), #9ad8ff);
+    transition: width var(--x-med) var(--x-ease);
+}
+
+.x-empty {
+    padding: 34px 22px;
+    text-align: center;
+    color: var(--x-text-faint);
+    font-size: .82rem;
+    line-height: 1.6;
+    border: 1px dashed var(--x-line);
+    border-radius: var(--x-radius);
+    background: var(--x-bg-sunken);
+}
+
+/* Screen-reader-only helper, matching the terminal stylesheet's convention. */
+.x-sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}

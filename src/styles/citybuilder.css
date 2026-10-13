@@ -1,0 +1,460 @@
+/* =========================================
+   LAST CITY · CITY BUILDER
+   -----------------------------------------
+   The City tab: a canvas stage with a control rail beside it on desktop and
+   stacked beneath it on phones. Everything here is scoped to
+   #cityBuilderPanel so it cannot leak into the original screens.
+========================================= */
+
+#cityBuilderPanel {
+    display: none;
+    position: relative;
+}
+
+body.build-open #cityBuilderPanel,
+#cityBuilderPanel.expansion-active {
+    display: block;
+}
+
+.city-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 332px;
+    gap: 14px;
+    align-items: start;
+}
+
+/* -----------------------------------------
+   Stage
+----------------------------------------- */
+
+.city-stage {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    background: #05090f;
+    box-shadow: 0 18px 46px rgba(0, 0, 0, .45), inset 0 0 0 1px rgba(255, 255, 255, .03);
+}
+
+#cityCanvas {
+    display: block;
+    width: 100%;
+    /* Tall enough to read the isometric city, capped so it never pushes the
+       page controls off a laptop screen. */
+    height: clamp(360px, 58vh, 620px);
+    cursor: grab;
+    touch-action: none;
+    background: #070c14;
+}
+
+#cityCanvas:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: -2px;
+}
+
+#cityCanvas.city-panning { cursor: grabbing; }
+
+.city-overlay {
+    position: absolute;
+    top: 10px;
+    display: flex;
+    gap: 6px;
+    pointer-events: none;
+}
+
+.city-overlay-left {
+    left: 12px;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.city-overlay-right {
+    right: 10px;
+    flex-direction: column;
+    pointer-events: auto;
+}
+
+.city-zone-name {
+    margin: 0;
+    font-size: .74rem;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: #e8eef6;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, .85);
+}
+
+.city-clock {
+    margin: 0;
+    display: flex;
+    gap: 8px;
+    font-size: .68rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, .9);
+}
+
+.city-clock span + span::before {
+    content: "·";
+    margin-right: 8px;
+    opacity: .6;
+}
+
+.city-round {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: rgba(8, 14, 22, .78);
+    color: var(--text);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    transition: background .16s ease, border-color .16s ease, transform .12s ease;
+}
+
+.city-round:hover { background: rgba(20, 34, 50, .9); border-color: var(--blue); }
+.city-round:active { transform: scale(.94); }
+
+.city-hint {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 10px;
+    margin: 0;
+    padding: 7px 11px;
+    border-radius: 10px;
+    background: rgba(6, 10, 16, .76);
+    border: 1px solid rgba(255, 255, 255, .07);
+    font-size: .72rem;
+    color: #cfd9e4;
+    text-align: center;
+    pointer-events: none;
+    backdrop-filter: blur(4px);
+}
+
+.city-hint:empty { display: none; }
+
+/* -----------------------------------------
+   Side rail
+----------------------------------------- */
+
+.city-side {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+
+.city-toolbar {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.city-tool {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 8px 4px;
+    border-radius: 11px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--muted);
+    font-size: .64rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: border-color .16s ease, color .16s ease, background .16s ease;
+}
+
+.city-tool span { font-size: 1.05rem; line-height: 1; }
+.city-tool:hover { color: var(--text); border-color: #3a5572; }
+
+.city-tool.active {
+    color: #061018;
+    background: linear-gradient(160deg, var(--blue), #3f8fd6);
+    border-color: var(--blue);
+}
+
+.city-block {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: linear-gradient(180deg, var(--panel), #0a121b);
+    overflow: hidden;
+}
+
+.city-block > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255, 255, 255, .02);
+}
+
+.city-block > header h3 {
+    margin: 0;
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: #dbe4ee;
+}
+
+.city-block > header span {
+    font-size: .68rem;
+    color: var(--yellow);
+    font-weight: 600;
+}
+
+.city-mini {
+    padding: 4px 9px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--panel-light);
+    color: var(--text);
+    font-size: .68rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color .16s ease, background .16s ease;
+}
+
+.city-mini:hover:not(:disabled) { border-color: var(--blue); background: #16283a; }
+.city-mini:disabled { opacity: .38; cursor: not-allowed; }
+
+/* -----------------------------------------
+   Build tray
+----------------------------------------- */
+
+.city-tray {
+    max-height: 310px;
+    overflow-y: auto;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.city-tray-group {
+    margin: 6px 0 1px;
+    font-size: .6rem;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.city-tray-group:first-child { margin-top: 0; }
+
+.city-tray-item {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 8px 9px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--panel-light);
+    color: var(--text);
+    text-align: left;
+    cursor: grab;
+    transition: border-color .15s ease, background .15s ease, transform .12s ease;
+}
+
+.city-tray-item:hover { border-color: #3a5572; background: #16283a; }
+.city-tray-item:active { cursor: grabbing; transform: scale(.985); }
+
+.city-tray-item.active {
+    border-color: var(--blue);
+    background: linear-gradient(130deg, rgba(101, 186, 255, .2), rgba(101, 186, 255, .05));
+    box-shadow: inset 0 0 0 1px rgba(101, 186, 255, .35);
+}
+
+.city-tray-item.unaffordable { opacity: .5; }
+.city-tray-item[aria-disabled="true"] { cursor: not-allowed; }
+
+.tray-icon { font-size: 1.15rem; line-height: 1; text-align: center; }
+
+.tray-copy { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.tray-copy strong { font-size: .78rem; font-weight: 600; }
+.tray-copy small { font-size: .66rem; color: var(--muted); }
+
+.tray-count {
+    font-size: .64rem;
+    color: var(--muted);
+    text-align: right;
+    white-space: nowrap;
+}
+
+.tray-ready {
+    font-style: normal;
+    color: var(--green);
+    font-weight: 700;
+}
+
+/* -----------------------------------------
+   Inspector
+----------------------------------------- */
+
+.city-inspector { padding: 11px 12px; display: flex; flex-direction: column; gap: 8px; }
+
+.inspect-head { display: flex; align-items: center; gap: 10px; }
+.inspect-icon { font-size: 1.5rem; line-height: 1; }
+.inspect-head strong { display: block; font-size: .86rem; }
+.inspect-head small { display: block; font-size: .66rem; color: var(--muted); }
+
+.inspect-desc { margin: 0; font-size: .72rem; line-height: 1.5; color: #b9c6d4; }
+
+.inspect-stats {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: .71rem;
+    color: #c6d2de;
+}
+
+.inspect-stats li { display: flex; justify-content: space-between; gap: 8px; }
+.inspect-stats strong { color: var(--text); font-weight: 600; }
+
+.inspect-health { margin: 0; display: flex; justify-content: space-between; font-size: .71rem; color: var(--muted); }
+.inspect-health em { font-style: normal; font-weight: 700; }
+.inspect-health em.ok { color: var(--green); }
+.inspect-health em.warn { color: var(--yellow); }
+.inspect-health em.bad { color: var(--orange); }
+
+.inspect-jobs {
+    margin: 0;
+    padding: 6px 9px;
+    border-radius: 8px;
+    background: rgba(91, 214, 155, .1);
+    border: 1px solid rgba(91, 214, 155, .28);
+    font-size: .7rem;
+    color: #bfe8d3;
+}
+
+.inspect-jobs.understaffed {
+    background: rgba(255, 194, 71, .1);
+    border-color: rgba(255, 194, 71, .32);
+    color: #f1dcae;
+}
+
+.inspect-progress {
+    margin: 0;
+    height: 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, .08);
+    overflow: hidden;
+}
+
+.inspect-progress span {
+    display: block;
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--green), var(--blue));
+    transition: width .3s linear;
+}
+
+.inspect-note { margin: 0; font-size: .69rem; color: var(--muted); }
+.inspect-note.bad { color: var(--orange); }
+
+.inspect-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.city-action {
+    flex: 1 1 auto;
+    padding: 8px 10px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: var(--panel-light);
+    color: var(--text);
+    font-size: .72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color .16s ease, background .16s ease;
+}
+
+.city-action:hover:not(:disabled) { border-color: var(--blue); background: #16283a; }
+.city-action:disabled { opacity: .4; cursor: not-allowed; }
+.city-action.danger:hover:not(:disabled) { border-color: var(--orange); background: #2a1a14; }
+
+/* -----------------------------------------
+   Jobs + districts
+----------------------------------------- */
+
+.city-jobs { padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; }
+
+.job-summary { margin: 0 0 2px; font-size: .69rem; color: var(--muted); }
+
+.job-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 9px; }
+.job-icon { font-size: .95rem; text-align: center; }
+.job-copy { display: flex; flex-direction: column; min-width: 0; }
+.job-copy strong { font-size: .74rem; font-weight: 600; }
+.job-copy small { font-size: .64rem; color: var(--muted); }
+.job-controls { display: flex; gap: 4px; }
+.job-controls .city-mini { min-width: 28px; padding: 3px 0; text-align: center; }
+
+.city-districts { padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; }
+
+.district-row { display: flex; align-items: center; justify-content: space-between; gap: 9px; }
+.district-copy { display: flex; flex-direction: column; min-width: 0; }
+.district-copy strong { font-size: .74rem; font-weight: 600; }
+.district-copy small { font-size: .64rem; color: var(--muted); }
+.district-row.open .district-copy strong { color: var(--green); }
+.district-badge { color: var(--green); font-weight: 700; }
+
+/* -----------------------------------------
+   Drag chip
+----------------------------------------- */
+
+.city-drag-chip {
+    position: fixed;
+    z-index: 95;
+    transform: translate(-50%, -140%);
+    padding: 6px 11px;
+    border-radius: 10px;
+    border: 1px solid var(--blue);
+    background: rgba(8, 18, 28, .94);
+    color: var(--text);
+    font-size: .72rem;
+    font-weight: 600;
+    pointer-events: none;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, .55);
+}
+
+/* -----------------------------------------
+   Responsive
+----------------------------------------- */
+
+@media (max-width: 1080px) {
+    .city-shell { grid-template-columns: minmax(0, 1fr); }
+    .city-side { flex-direction: column; }
+    .city-tray { max-height: 250px; }
+}
+
+@media (max-width: 720px) {
+    #cityCanvas { height: clamp(300px, 46vh, 420px); }
+    .city-toolbar { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .city-tool { font-size: .58rem; padding: 7px 2px; }
+    .city-hint { font-size: .66rem; padding: 6px 9px; }
+    .city-overlay-right { top: 4px; }
+    .city-round { width: 30px; height: 30px; font-size: .9rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .city-round, .city-tray-item, .city-tool, .city-action, .inspect-progress span {
+        transition: none;
+    }
+}
+
+/* The panel lives inside <main class="game-container">, which already provides
+   the page gutter, so the shared width from expansion.css is neutralised here. */
+#cityBuilderPanel { width: 100%; max-width: none; margin: 0 0 20px; }

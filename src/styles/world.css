@@ -1,11 +1,11 @@
 /* Shared layout with an earned, distinct identity for each zone. */
-body { --world-color: #f4bf76; --world-glow: #f4bf7619; --world-art: url('../../assets/zones/ashfall.png'); }
+body { --world-color: #f4bf76; --world-glow: #f4bf7619; --world-art: url('../../assets/zones/ashfall.webp'); }
 /* Keep URL tokens in this stylesheet: var() resolves relative URLs where used. */
-body[data-zone="1"] { --world-color: #f4bf76; --world-glow: #f4bf7619; --world-art: url('../../assets/zones/ashfall.png'); }
-body[data-zone="2"] { --world-color: #92e2b1; --world-glow: #92e2b119; --world-art: url('../../assets/zones/depot.png'); }
-body[data-zone="3"] { --world-color: #ffab7d; --world-glow: #ffab7d19; --world-art: url('../../assets/zones/foundry.png'); }
-body[data-zone="4"] { --world-color: #c4a5ff; --world-glow: #c4a5ff19; --world-art: url('../../assets/zones/relay.png'); }
-body[data-zone="5"] { --world-color: #a8dfff; --world-glow: #a8dfff19; --world-art: url('../../assets/zones/citadel.png'); }
+body[data-zone="1"] { --world-color: #f4bf76; --world-glow: #f4bf7619; --world-art: url('../../assets/zones/ashfall.webp'); }
+body[data-zone="2"] { --world-color: #92e2b1; --world-glow: #92e2b119; --world-art: url('../../assets/zones/depot.webp'); }
+body[data-zone="3"] { --world-color: #ffab7d; --world-glow: #ffab7d19; --world-art: url('../../assets/zones/foundry.webp'); }
+body[data-zone="4"] { --world-color: #c4a5ff; --world-glow: #c4a5ff19; --world-art: url('../../assets/zones/relay.webp'); }
+body[data-zone="5"] { --world-color: #a8dfff; --world-glow: #a8dfff19; --world-art: url('../../assets/zones/citadel.webp'); }
 body, body[data-zone] {
     --blue: var(--world-color); --yellow: var(--world-color); --feedback-color: var(--world-color);
     background: radial-gradient(ellipse at 85% 0%, var(--world-glow), transparent 50%), #080b13;
@@ -93,11 +93,11 @@ body.companions-open .milestone-panel, body.companions-open .tutorial-hint { dis
 .story-index button:disabled small { color: #8999b0; }
 .story-reader { background: #111a28; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; min-width: 0; }
 .story-art { height: clamp(170px, 22vw, 260px); background-position: center; background-size: cover; border-bottom: 1px solid var(--border); }
-.story-art-1 { background-image: url('../../assets/zones/ashfall.png'); }
-.story-art-2 { background-image: url('../../assets/zones/depot.png'); }
-.story-art-3 { background-image: url('../../assets/zones/foundry.png'); }
-.story-art-4 { background-image: url('../../assets/zones/relay.png'); }
-.story-art-5 { background-image: url('../../assets/zones/citadel.png'); }
+.story-art-1 { background-image: url('../../assets/zones/ashfall.webp'); }
+.story-art-2 { background-image: url('../../assets/zones/depot.webp'); }
+.story-art-3 { background-image: url('../../assets/zones/foundry.webp'); }
+.story-art-4 { background-image: url('../../assets/zones/relay.webp'); }
+.story-art-5 { background-image: url('../../assets/zones/citadel.webp'); }
 .story-page { padding: clamp(20px, 3vw, 36px); }
 .story-page h3 { font-size: clamp(24px, 3vw, 32px); line-height: 1.3; margin: 12px 0 24px; color: #fff; }
 .story-page > p:not(.eyebrow) { font-size: 15px; line-height: 1.85; color: #d2dfef; margin: 0 0 19px; max-width: 65ch; }

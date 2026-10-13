@@ -1,0 +1,339 @@
+/* =========================================
+   LAST CITY · CITY DEFENSE
+   -----------------------------------------
+   The Defense tab: arena canvas, charge/lane controls, the card hand, and the
+   briefing / deck / records views beneath it.
+========================================= */
+
+#combatPanel { display: none; }
+
+body.combat-open #combatPanel,
+#combatPanel.expansion-active { display: block; }
+
+.combat-shell { display: flex; flex-direction: column; gap: 12px; }
+
+/* -----------------------------------------
+   Tabs
+----------------------------------------- */
+
+.combat-tabs {
+    display: flex;
+    gap: 6px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+}
+
+.combat-tab {
+    padding: 7px 15px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--muted);
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: border-color .16s ease, color .16s ease, background .16s ease;
+}
+
+.combat-tab:hover { color: var(--text); border-color: #3a5572; }
+
+.combat-tab.active {
+    color: #061018;
+    background: linear-gradient(160deg, var(--orange), #d9701f);
+    border-color: var(--orange);
+}
+
+/* -----------------------------------------
+   Arena
+----------------------------------------- */
+
+.combat-arena-wrap {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    background: #05090f;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, .45);
+}
+
+.combat-arena-wrap[hidden] { display: none; }
+
+#combatCanvas {
+    display: block;
+    width: 100%;
+    height: clamp(280px, 44vh, 460px);
+    touch-action: none;
+    cursor: crosshair;
+}
+
+.combat-result {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 20px;
+    text-align: center;
+    background: rgba(4, 7, 11, .9);
+    backdrop-filter: blur(6px);
+    animation: combat-result-in .4s ease both;
+}
+
+.combat-result[hidden] { display: none; }
+
+@keyframes combat-result-in {
+    from { opacity: 0; transform: scale(.98); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+.combat-result h2 {
+    margin: 0;
+    font-size: clamp(1.1rem, 3.4vw, 1.6rem);
+    letter-spacing: .04em;
+}
+
+.combat-result.win h2 { color: var(--green); }
+.combat-result.loss h2 { color: var(--orange); }
+
+.combat-result ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: .8rem;
+    color: #d3dde8;
+}
+
+.combat-result .muted { color: var(--muted); font-size: .72rem; }
+.combat-result p { margin: 0; max-width: 46ch; font-size: .78rem; color: #b9c6d4; line-height: 1.55; }
+
+/* -----------------------------------------
+   Live bar + cards
+----------------------------------------- */
+
+.combat-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.combat-bar[hidden] { display: none; }
+
+.lane-picker { display: flex; gap: 5px; }
+
+.lane-pick {
+    padding: 6px 13px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--muted);
+    font-size: .7rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.lane-pick.active {
+    color: #061018;
+    background: var(--blue);
+    border-color: var(--blue);
+}
+
+.combat-retreat {
+    padding: 6px 14px;
+    border-radius: 9px;
+    border: 1px solid rgba(255, 139, 53, .5);
+    background: rgba(255, 139, 53, .12);
+    color: #ffd0a8;
+    font-size: .7rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.combat-retreat:hover { background: rgba(255, 139, 53, .22); }
+
+.combat-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 7px;
+}
+
+.combat-cards[hidden] { display: none; }
+
+.combat-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 10px 7px 8px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: linear-gradient(170deg, var(--panel-light), #0b141e);
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color .15s ease, transform .12s ease, box-shadow .15s ease;
+}
+
+.combat-card:hover { border-color: #3a5572; transform: translateY(-2px); }
+
+.combat-card.selected {
+    border-color: var(--yellow);
+    box-shadow: 0 0 0 1px var(--yellow), 0 8px 22px rgba(255, 194, 71, .2);
+}
+
+.combat-card.locked { opacity: .45; }
+
+.card-cost {
+    position: absolute;
+    top: 5px;
+    left: 6px;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 6px;
+    background: linear-gradient(160deg, #aa8cff, #6f5ad0);
+    color: #0a0714;
+    font-size: .68rem;
+    font-weight: 800;
+    line-height: 18px;
+    text-align: center;
+}
+
+.card-icon { font-size: 1.35rem; line-height: 1; }
+.card-name { font-size: .73rem; font-weight: 600; }
+.card-stats { font-size: .6rem; color: var(--muted); text-align: center; }
+
+.card-jammed {
+    position: absolute;
+    inset: auto 0 0;
+    padding: 2px 0;
+    background: rgba(255, 90, 70, .85);
+    color: #150606;
+    font-size: .56rem;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-align: center;
+}
+
+.combat-cards-hint {
+    grid-column: 1 / -1;
+    margin: 0;
+    font-size: .68rem;
+    color: var(--muted);
+    text-align: center;
+}
+
+/* -----------------------------------------
+   Briefing
+----------------------------------------- */
+
+.combat-brief {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    gap: 12px;
+}
+
+.brief-main, .brief-side {
+    padding: 15px 17px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: linear-gradient(180deg, var(--panel), #0a121b);
+}
+
+.brief-main h2 { margin: 2px 0 7px; font-size: 1.1rem; }
+.brief-main p { margin: 0 0 10px; font-size: .78rem; line-height: 1.55; color: #b9c6d4; }
+.brief-main .inspect-stats { margin-bottom: 12px; }
+
+.brief-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+
+.brief-side ol {
+    margin: 6px 0 0;
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: .73rem;
+    line-height: 1.5;
+    color: #b9c6d4;
+}
+
+.combat-note {
+    margin: 0 0 10px;
+    font-size: .73rem;
+    color: var(--muted);
+    line-height: 1.5;
+}
+
+/* -----------------------------------------
+   Deck + records
+----------------------------------------- */
+
+.unit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 9px;
+}
+
+.unit-card {
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    background: linear-gradient(180deg, var(--panel), #0a121b);
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.unit-card.locked { opacity: .6; }
+
+.unit-card header { display: flex; align-items: center; gap: 9px; }
+.unit-card header span { font-size: 1.3rem; line-height: 1; }
+.unit-card header strong { display: block; font-size: .84rem; }
+.unit-card header small { display: block; font-size: .64rem; color: var(--muted); text-transform: capitalize; }
+.unit-card p { margin: 0; font-size: .72rem; line-height: 1.5; color: #b1bfcd; }
+.unit-stats { font-size: .7rem !important; color: var(--yellow) !important; }
+.unit-locked { font-size: .7rem !important; color: var(--muted) !important; }
+.unit-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.combat-records { display: flex; flex-direction: column; gap: 10px; }
+.combat-records h4 { margin: 4px 0 0; font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+
+.boss-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: .74rem;
+    color: #c3cfdb;
+}
+
+/* -----------------------------------------
+   Responsive
+----------------------------------------- */
+
+@media (max-width: 860px) {
+    .combat-brief { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 720px) {
+    #combatCanvas { height: clamp(240px, 38vh, 340px); }
+    .combat-cards { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); }
+    .card-icon { font-size: 1.15rem; }
+    .combat-tab { padding: 6px 11px; font-size: .66rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .combat-result { animation: none; }
+    .combat-card, .combat-tab { transition: none; }
+}
+
+#combatPanel { width: 100%; max-width: none; margin: 0 0 20px; }
