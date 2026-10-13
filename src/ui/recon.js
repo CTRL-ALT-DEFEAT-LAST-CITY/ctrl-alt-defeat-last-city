@@ -77,7 +77,7 @@ function reconInventoryRow(type,name,code,count,beacon=false) {
     return `<li data-recon-row="${type}" data-tier="${Math.min(6,tier)}"><button type="button" data-recon-nav="${type}" aria-label="Open ${name}; ${label}" title="Open ${name}; no resources spent."><span>${name}<small>${code}</small></span><strong>${beacon?count+' / 3':reconRaw(count)}</strong><progress max="100" value="${(progress*100).toFixed(1)}" aria-label="${label}"></progress><small class="recon-tier-target">${beacon?(count===3?'SIGNAL COMPLETE':'MODULES / '+count+'/3'):'NEXT / '+reconRaw(next)}</small></button></li>`;
 }
 function reconWorldColor() {return window.getComputedStyle?.(document.body)?.getPropertyValue?.('--world-color')?.trim() || '#b5e7ca';}
-function reconInteractionAllowed() {return !!(gameStarted && !document.hidden && !window.LastCityCloud?.isSwitching?.() && !document.querySelector('dialog[open],.offline-modal') && !el('playerSettings')?.open);}
+function reconInteractionAllowed() {return !!(currentStageView===1 && gameStarted && !document.hidden && !window.LastCityCloud?.isSwitching?.() && !document.querySelector('dialog[open],.offline-modal') && !el('playerSettings')?.open);}
 function reconNarrate(snapshot) {
     const now=Date.now();
     if(!reconViewActive()){reconNarrationClock=0;return;}
@@ -149,7 +149,7 @@ function reconSurveyMarkup(snapshot) {
 }
 function reconViewActive() {
     const panel=el('reconMap'),rect=(el('reconProjection') || panel)?.getBoundingClientRect?.();
-    return !!(panel?.open && !panel.hidden && gameStarted && !document.hidden && !window.LastCityCloud?.isSwitching?.() && !document.querySelector('dialog[open],.offline-modal') && !el('playerSettings')?.open && rect?.bottom>0 && rect.top<window.innerHeight);
+    return !!(currentStageView===1 && panel?.open && !panel.hidden && gameStarted && !document.hidden && !window.LastCityCloud?.isSwitching?.() && !document.querySelector('dialog[open],.offline-modal') && !el('playerSettings')?.open && rect?.bottom>0 && rect.top<window.innerHeight);
 }
 function reconMotionAllowed() {return reconViewActive() && canPlayVfx() && Date.now()>=reconQuietUntil;}
 function cancelReconAnimation() {
@@ -171,10 +171,11 @@ function clearReconMapPresentation(reset=false) {
 }
 function renderReconMap() {
     const panel=el('reconMap');if(!panel)return;
-    panel.hidden=!gameStarted || !['city','upgrades'].includes(currentGameMode) || !!window.LastCityCloud?.isSwitching?.();
+    panel.hidden=currentStageView!==1 || !gameStarted || !['city','upgrades'].includes(currentGameMode) || !!window.LastCityCloud?.isSwitching?.();
     if(gameStarted && !window.LastCityCloud?.isSwitching?.()){
-        if(currentGameMode==='city' && reconLastMode!=='city')panel.open=true;
-        reconLastMode=currentGameMode;
+        const view=currentStageView+':'+currentGameMode;
+        if(currentStageView===1 && currentGameMode==='city' && reconLastMode!==view)panel.open=true;
+        reconLastMode=view;
         if(typeof ambientAudioArmed!=='undefined' && ambientAudioArmed)reconAudioArmed=true;
     }
     if(reconGhost && Date.now()>=reconGhost.expires){reconGhost=null;reconRenderKey='';}
@@ -292,8 +293,8 @@ function initReconMap() {
     el('reconMap').addEventListener('toggle',renderReconMap);
     for(const event of ['click','keydown'])el('reconMap').querySelector?.('summary')?.addEventListener(event,armReconAudio);
     for(const event of ['animationstart','animationiteration'])el('reconTerrain').addEventListener(event,event=>{if(event.animationName==='reconSweep')scheduleReconSweep(event.target);});
-    el('reconManualButton').addEventListener('click',()=>openZoneHelp('zones',true,1));
-    el('reconBuildButton').addEventListener('click',()=>{if(!gameStarted || document.querySelector('dialog[open]') || window.LastCityCloud?.isSwitching?.())return;document.querySelector('.stage-tab[data-stage="1"]')?.click();switchGameMode('upgrades');setPurchaseView('buildings');el('reconMap').scrollIntoView({behavior:canPlayVfx()?'smooth':'auto',block:'start'});});
+    el('reconManualButton').addEventListener('click',()=>{if(reconInteractionAllowed())openZoneHelp('zones',true,1);});
+    el('reconBuildButton').addEventListener('click',()=>{if(!reconInteractionAllowed())return;document.querySelector('.stage-tab[data-stage="1"]')?.click();switchGameMode('upgrades');setPurchaseView('buildings');el('reconMap').scrollIntoView({behavior:canPlayVfx()?'smooth':'auto',block:'start'});});
     for(const id of ['reconTerrain','reconInventory'])for(const eventName of ['click','keydown'])el(id).addEventListener(eventName,event=>{
         if(eventName==='keydown' && !['Enter',' '].includes(event.key))return;
         // Inventory uses native buttons; let their keyboard-generated click handle it once.

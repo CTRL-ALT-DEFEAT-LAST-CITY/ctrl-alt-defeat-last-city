@@ -1,5 +1,5 @@
 // The title page owns its presentation, optional audio and explicit daily claim.
-const LAST_CITY_BUILD = { version: '1.0.7-dev', date: '2026.10.12', channel: 'Local review' };
+const LAST_CITY_BUILD = { version: '1.0.8-dev', date: '2026.10.13', channel: 'Local review' };
 let startupSaveAvailable = false, ambientAudioArmed = false, ambientLoop = null, dailyClaimError = '';
 
 function normalizeDailyReward(saved = {}) {
