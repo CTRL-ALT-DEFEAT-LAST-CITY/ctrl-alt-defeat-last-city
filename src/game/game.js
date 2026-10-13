@@ -32,6 +32,14 @@ const defaultGame = {
     highestSalvageRate: 0,
     introSeen: false,
     soundEnabled: true,
+    // Added by this update. `expansion` holds every new system's state in one
+    // namespace so the original save shape is untouched and an old save still
+    // loads; normalizeExpansion() is defined in src/game/migration.js, which
+    // index.html loads before this file for exactly this reason.
+    expansion: typeof normalizeExpansion === "function" ? normalizeExpansion() : undefined,
+    musicEnabled: true,
+    musicVolume: 0.55,
+    sfxVolume: 0.8,
     ambientEnabled: false,
     effectsEnabled: true,
     storyPopupsEnabled: true,
@@ -357,6 +365,22 @@ function totalBuildings() {
     return Object.values(game.buildings).reduce((sum, count) => sum + count, 0);
 }
 
+// ---------------------------------------------------------------
+// The one channel through which this update's new systems (research, city
+// services and companion levels) may touch production. It returns exactly 1
+// when nothing has been earned, and 1 if the expansion scripts are absent, so
+// an untouched save produces byte-identical output to the previous build.
+// ---------------------------------------------------------------
+function expansionMultiplier(stage) {
+    if (typeof expansionProductionMultiplier !== "function") return 1;
+    try {
+        const value = expansionProductionMultiplier(stage);
+        return Number.isFinite(value) && value > 0 ? value : 1;
+    } catch (_) {
+        return 1;
+    }
+}
+
 // =============================================
 // COST & PRODUCTION
 // =============================================
@@ -388,6 +412,7 @@ function getSalvageMultiplier(driveLevel = game.cityTech.salvageAccelerator) {
         * (1 + game.stage3ResetUpgrades.salvageBoost3b * .75) * (1 + game.stage4ResetUpgrades.salvageBoost4b)
         * (1 + game.stage5ResetUpgrades.salvageBoost5 * 1.5);
     mult *= getCompanionMultiplier(1) * getGlyphMultiplier(1) * (1 + game.adventure.progression.beaconModules * .15);
+    mult *= expansionMultiplier(1);
     if (game.rebirthUpgrades.legacy) mult *= 2;
     if (game.stage5Upgrades.ascension) mult *= 2;
     if (game.stage5ResetUpgrades.lastCity) mult *= 10;
@@ -427,7 +452,16 @@ function getMomentumBonus() {
 
 function getSupplyDropValue() {
     const boost = feedbackResourceMultiplier();
-    return Math.max(40, getSalvagePerSecond() / boost * 25) * (1 + game.cityTech.dropScanner * 0.25) * boost;
+    // Supply Depots built in the city view raise the payload. Guarded so the
+    // original value is returned when the expansion layer is not present.
+    let depots = 1;
+    if (typeof expansionSupplyDropBonus === "function") {
+        try {
+            const value = expansionSupplyDropBonus();
+            if (Number.isFinite(value) && value > 0) depots = value;
+        } catch (_) { depots = 1; }
+    }
+    return Math.max(40, getSalvagePerSecond() / boost * 25) * (1 + game.cityTech.dropScanner * 0.25) * boost * depots;
 }
 
 function getTechCost(def, level) { return economyUpgradeCost(def, level); }
@@ -439,7 +473,7 @@ function getScrapPerSecond(driveLevel = game.stage2Upgrades.scrapRate) {
     if (game.stage2ResetUpgrades.settlementLegacy) base *= 2;
     if (game.stage5Upgrades.ascension) base *= 2;
     if (game.stage5ResetUpgrades.lastCity) base *= 10;
-    return base * (1 + getPopulationResourceBonus()) * getCompanionMultiplier(2) * getGlyphMultiplier(2) * feedbackResourceMultiplier();
+    return base * (1 + getPopulationResourceBonus()) * getCompanionMultiplier(2) * getGlyphMultiplier(2) * feedbackResourceMultiplier() * expansionMultiplier(2);
 }
 
 function getPartsPerSecond(driveLevel = game.stage3Upgrades.partRate) {
@@ -449,7 +483,7 @@ function getPartsPerSecond(driveLevel = game.stage3Upgrades.partRate) {
     if (game.stage3ResetUpgrades.industryLegacy) base *= 2;
     if (game.stage5Upgrades.ascension) base *= 2;
     if (game.stage5ResetUpgrades.lastCity) base *= 10;
-    return base * (1 + getPopulationResourceBonus()) * getCompanionMultiplier(3) * getGlyphMultiplier(3) * feedbackResourceMultiplier();
+    return base * (1 + getPopulationResourceBonus()) * getCompanionMultiplier(3) * getGlyphMultiplier(3) * feedbackResourceMultiplier() * expansionMultiplier(3);
 }
 
 function getCircuitsPerSecond(driveLevel = game.stage4Upgrades.circuitRate) {
@@ -458,7 +492,7 @@ function getCircuitsPerSecond(driveLevel = game.stage4Upgrades.circuitRate) {
     if (game.stage4ResetUpgrades.networkLegacy) base *= 2;
     if (game.stage5Upgrades.ascension) base *= 2;
     if (game.stage5ResetUpgrades.lastCity) base *= 10;
-    return base * (1 + getPopulationResourceBonus()) * getCompanionMultiplier(4) * getGlyphMultiplier(4) * feedbackResourceMultiplier();
+    return base * (1 + getPopulationResourceBonus()) * getCompanionMultiplier(4) * getGlyphMultiplier(4) * feedbackResourceMultiplier() * expansionMultiplier(4);
 }
 
 function getCoresPerSecond(driveLevel = game.stage5Upgrades.coreRate) {
@@ -468,7 +502,7 @@ function getCoresPerSecond(driveLevel = game.stage5Upgrades.coreRate) {
     if (game.adventure.bossDefeated) base *= 2;
     if (game.stage5Upgrades.ascension) base *= 2;
     if (game.stage5ResetUpgrades.lastCity) base *= 10;
-    return base * (1 + getPopulationResourceBonus()) * getCompanionMultiplier(5) * getGlyphMultiplier(5) * feedbackResourceMultiplier();
+    return base * (1 + getPopulationResourceBonus()) * getCompanionMultiplier(5) * getGlyphMultiplier(5) * feedbackResourceMultiplier() * expansionMultiplier(5);
 }
 
 // =============================================
@@ -503,7 +537,6 @@ function buyBuilding(type) {
         showNotification("Not enough Salvage!");
         return;
     }
-    const reconBefore = typeof reconMapSnapshot === 'function' ? reconMapSnapshot() : null;
     game.salvage -= batch.total;
     game.buildings[type] += batch.count;
     game.totalBuildingsBuilt += batch.count;
@@ -512,7 +545,6 @@ function buyBuilding(type) {
     spawnBurst(el("buy" + type.charAt(0).toUpperCase() + type.slice(1)), "#65baff", 12);
     updateGame();
     terminalPurchase(el("buy" + type.charAt(0).toUpperCase() + type.slice(1)));
-    if (reconBefore) recordReconMapPlacement(reconBefore, type);
     saveGame(false);
 }
 
@@ -592,7 +624,6 @@ function doRebirth() {
         return;
     }
 
-    const reconBeforeRenewal = typeof reconMapSnapshot === 'function' ? reconMapSnapshot() : null;
     const gained = calculateRebirthShards();
     if (glyphAuto) stopGlyphAuto("Auto-roll stopped by city renewal.");
     celebrateEvent("rebirth", "A new legacy begins", `Rebirth ${formatNumber(game.rebirths + 1)} · ×2 permanent Salvage · +${formatNumber(gained)} Shards`);
@@ -623,11 +654,13 @@ function doRebirth() {
     game.totalSalvage = 0;
 
     if (game.rebirthUpgrades.headStart > 0) { game.salvage = 1000; game.buildings.scavenger = Math.max(1, game.buildings.scavenger); }
-    if (reconBeforeRenewal) recordReconRenewal(reconBeforeRenewal);
 
     showNotification(`Rebirth! +${gained} Salvage Shards.`);
 
     game.wallReached = false;
+    // The city layout belongs to the run, so it is cleared here; research,
+    // companions, discoveries and combat records are permanent and are not.
+    if (typeof expansionOnRebirth === "function") expansionOnRebirth();
     updateGame();
     saveGame(false);
 }
@@ -652,6 +685,7 @@ function resetSimulatorStage(stage) {
         if (curve.stage === stage) { game.economy.legacyUpgradeMultipliers[key] = 1; game.economy.legacyFlatLevels[key] = 0; }
     }
     if (stage === 3) { game.adventure.progression.production = null; game.adventure.assembly = []; }
+    if (typeof expansionOnStageReset === "function") expansionOnStageReset(stage);
     celebrateEvent('rebirth', 'Stronger next run', '×1.5 permanent zone production · +' + reward + ' tokens');
     showNotification(resetKeepSummary(stage) + '. Currency resets' + (preservationOwned(stage) ? '.' : ', production and activity tools reset.'));
     updateGame(); saveGame(false); return true;
@@ -790,7 +824,6 @@ energyButton.addEventListener("click", function () {
     game.totalSalvage += click;
     game.lifetimeSalvage += click;
     game.totalClicks++;
-    if(typeof terminalRegisterManualClick==='function')terminalRegisterManualClick();
     if (isCritical) game.criticalClicks++;
     game.highestCombo = Math.max(game.highestCombo, game.combo);
     const feedbackAnchor=gatherFeedbackAnchor || energyButton;
@@ -853,7 +886,6 @@ stageTabs.forEach(tab => {
         if (stage === currentStageView) return;
 
         const previousStage=currentStageView;
-        if(typeof terminalRememberScreen==='function')terminalRememberScreen();
         currentStageView = stage;
         game.lastStageView = stage;
         stageTabs.forEach(t => t.setAttribute("aria-pressed", String(Number(t.dataset.stage) === stage)));
@@ -1141,10 +1173,10 @@ function updateGame() {
     renderCityVisual();
     renderAdventure();
     renderWorldUI();
-    if (typeof renderReconMap === 'function') renderReconMap();
     renderGlyphs();
     renderPlayerUI();
     refreshTerminalUI();
+    if (typeof renderExpansion === "function") renderExpansion();
 
     // Tab locks
     stageTabs.forEach(tab => {
@@ -1470,21 +1502,13 @@ function renderResetUpgrades() {
 // =============================================
 
 function getSaveKey() {
-    return window.LastCityCloud?.getSaveKey?.() || SAVE_KEY;
+    return window.LastCityCloud ? window.LastCityCloud.getSaveKey() : SAVE_KEY;
 }
 
 function saveGame(showMsg = true) {
-    if(window.LastCityCloud?.isSwitching?.())return;
-    if(typeof terminalCanWriteState==='function' && !terminalCanWriteState()){
-        if(el('autoSaveIndicator'))el('autoSaveIndicator').textContent='● Device state retained · save paused';
-        if(showMsg)showNotification('ERROR: Device state retained. Free storage or reload before saving.');
-        return;
-    }
     game.lastSeen = Date.now();
-    let serializedState;
     try {
-        serializedState=JSON.stringify(game);
-        localStorage.setItem(getSaveKey(), serializedState);
+        localStorage.setItem(getSaveKey(), JSON.stringify(game));
         startupSaveAvailable = true;
         terminalProgressSavedAt=Date.now();
     } catch (error) {
@@ -1492,7 +1516,6 @@ function saveGame(showMsg = true) {
         window.LastCityCloud?.onSave(showMsg);
         return;
     }
-    const writtenMessage=typeof terminalStateWritten==='function'?terminalStateWritten(serializedState,showMsg):'Game saved!';
     window.LastCityCloud?.onSave(showMsg);
     const indicator = el("autoSaveIndicator");
     if (indicator) {
@@ -1500,7 +1523,7 @@ function saveGame(showMsg = true) {
         indicator.classList.add("saved");
         setTimeout(() => { indicator.textContent = "● Auto-save ready"; indicator.classList.remove("saved"); }, 1400);
     }
-    if (showMsg) showNotification(writtenMessage);
+    if (showMsg) showNotification("Game saved!");
     if (!gameStarted) renderStartupPage();
 }
 
@@ -1516,14 +1539,13 @@ function loadGame(snapshot) {
     glyphManualReadyAt = 0;
     glyphMessage = "Auto-roll is off. Choose when to spend your currency.";
     if (autoHatchSession) stopAutoHatch("Auto hatch stopped when loading a save.");
-    let saved,readFailed=false;
-    try{saved=snapshot===undefined?localStorage.getItem(getSaveKey()):snapshot;}catch(_){readFailed=true;}
-    if(typeof terminalResolveState==='function')saved=terminalResolveState(saved,snapshot===undefined,readFailed);
+    const saved = snapshot === undefined ? localStorage.getItem(getSaveKey()) : snapshot;
     if (!saved) {
         game = JSON.parse(JSON.stringify(defaultGame));
         game.lastSeen = Date.now();
         game.sessionStartedAt = Date.now();
         queueUnpresentedLore();
+        notifyExpansionLoaded();
         updateGame();
         return;
     }
@@ -1539,6 +1561,10 @@ function loadGame(snapshot) {
             lastStageView: Number.isInteger(loaded.lastStageView) && loaded.lastStageView >= 1 && loaded.lastStageView <= 5
                 ? loaded.lastStageView : [5,4,3,2,1].find(stage => stage === 1 || loaded['stage' + stage + 'Unlocked']),
             story: normalizeStory(loaded.story),
+            expansion: typeof normalizeExpansion === "function" ? normalizeExpansion(loaded.expansion) : loaded.expansion,
+            musicEnabled: loaded.musicEnabled !== false,
+            musicVolume: Number.isFinite(loaded.musicVolume) ? loaded.musicVolume : 0.55,
+            sfxVolume: Number.isFinite(loaded.sfxVolume) ? loaded.sfxVolume : 0.8,
             glyphs: normalizeGlyphs(loaded.glyphs),
             preservation: normalizePreservation(loaded.preservation),
             sessionStartedAt: Date.now(),
@@ -1563,13 +1589,23 @@ function loadGame(snapshot) {
         try { applyOfflineProgress(); } finally { feedbackOfflineCalculation = false; }
     } catch (e) {
         console.error(e);
-        if(typeof terminalStateInfo!=='undefined'){terminalStateInfo.damage=true;terminalStateInfo.backup=false;terminalStateInfo.status='damaged';}
         game = JSON.parse(JSON.stringify(defaultGame));
         startupSaveAvailable = false;
     }
     queueUnpresentedLore();
+    notifyExpansionLoaded();
     updateGame();
     setTimeout(showOfflineModal, 500);
+}
+
+// Called after every load path (new game, device save, cloud save, account
+// switch) so the added systems re-read the save they have just been handed.
+function notifyExpansionLoaded() {
+    if (typeof migrateExpansionState === "function") {
+        try { migrateExpansionState(game); } catch (error) { console.error(error); }
+    }
+    try { window.LastCityExpansion?.onLoad?.(); } catch (error) { console.error(error); }
+    try { window.LastCityAudio?.syncPreferences?.(); } catch (_) { }
 }
 
 saveButton.addEventListener("click", () => saveGame(true));
@@ -1584,7 +1620,6 @@ function resetAllProgress() {
     glyphMessage = "Auto-roll is off. Choose when to spend your currency.";
     if (autoHatchSession) stopAutoHatch("Auto hatch stopped by full reset.");
     localStorage.removeItem(getSaveKey());
-    if(typeof terminalClearCityJournal==='function')terminalClearCityJournal();
     game = JSON.parse(JSON.stringify(defaultGame));
     stopAmbientAudio();
     closeStartupPanels();
@@ -1722,22 +1757,21 @@ function showNotification(msg) {
 function playSfx(type = "click") {
     if (!game.soundEnabled || document.hidden || window.LastCityCloud?.isSwitching?.() || !(window.AudioContext || window.webkitAudioContext)) return;
     try {
-        const now=Date.now(), cooldown={ui:60,click:70,beep:250,failure:250,hatch:500,rebirth:1000,reconPlace:160,reconTier:400,reconSweep:2000,reconBloom:1000}[type] || 120;
+        const now=Date.now(), cooldown={ui:60,click:70,beep:250,failure:250,hatch:500,rebirth:1000}[type] || 120;
         if(sfxVoices.size+(type==='hatch'?3:type==='travel'?2:1)>12 || now-(sfxLastTimes.get(type)??-Infinity)<cooldown)return;
         sfxLastTimes.set(type,now);
         audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
         if (audioContext.state === "suspended") audioContext.resume()?.catch?.(()=>{});
         const notes = { click:[110,.12,'triangle'],clack:[95,.055,'square'],ui:[440,.035,'sine'],beep:[660,.055,'sine'],failure:[85,.1,'sawtooth'],boot:[240,.16,'sine'],travel:[190,.25,'sine'],rebirth:[55,.5,'triangle'],hatch:[261.63,.45,'sine'],build:[140,.14,'triangle'],upgrade:[180,.16,'triangle'],critical:[900,.14,'sine'],dispatch:[500,.18,'triangle'] };
-        const reconNotes={reconPlace:[100,.09,'triangle'],reconTier:[720,.14,'sine'],reconSweep:[220,.28,'sine'],reconBloom:[392,.35,'sine']};
-        const [frequency, duration, wave] = reconNotes[type] || notes[type] || notes.click;
+        const [frequency, duration, wave] = notes[type] || notes.click;
         const oscillator = audioContext.createOscillator();
         const gain = audioContext.createGain();
         oscillator.type = wave;
         oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
-        if (type === "upgrade" || type === "dispatch" || type==='reconTier' || type==='reconSweep' || type==='reconBloom') oscillator.frequency.exponentialRampToValueAtTime(frequency * 1.5, audioContext.currentTime + duration);
+        if (type === "upgrade" || type === "dispatch") oscillator.frequency.exponentialRampToValueAtTime(frequency * 1.5, audioContext.currentTime + duration);
         else oscillator.frequency.exponentialRampToValueAtTime(frequency*(type==='critical'?2:type==='travel'?1.8:.45),audioContext.currentTime+duration);
         gain.gain.setValueAtTime(.0001, audioContext.currentTime);
-        gain.gain.exponentialRampToValueAtTime(reconNotes[type]?(type==='reconSweep'?.006:.012):.045, audioContext.currentTime + .01);
+        gain.gain.exponentialRampToValueAtTime(.045, audioContext.currentTime + .01);
         gain.gain.exponentialRampToValueAtTime(.0001, audioContext.currentTime + duration);
         oscillator.connect(gain).connect(audioContext.destination);
         oscillator.start();

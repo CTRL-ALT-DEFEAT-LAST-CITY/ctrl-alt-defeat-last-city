@@ -1,0 +1,453 @@
+/* =========================================
+   LAST CITY · PEOPLE, MISSIONS, COMPANIONS
+   -----------------------------------------
+   Shared styling for the three dialogs this update adds: survivors and
+   missions, an interrupting city event, and companion training. They share a
+   shell so they read as one system.
+========================================= */
+
+.people-modal,
+.event-modal,
+.petplus-modal {
+    /* Centred the same way the game's own dialogs are. A <dialog> centres
+       itself with the UA's `margin: auto`, but this page's shared element
+       styling overrides margin, which pinned these to the top-left corner. */
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    width: min(920px, 94vw);
+    max-width: none;
+    max-height: calc(100dvh - 32px);
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: linear-gradient(180deg, #0c1521, #070c13);
+    color: var(--text);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, .7);
+    overflow: hidden;
+}
+
+.event-modal { width: min(560px, 92vw); }
+
+.people-modal:not([open]),
+.event-modal:not([open]),
+.petplus-modal:not([open]) { display: none; }
+
+.people-modal::backdrop,
+.event-modal::backdrop,
+.petplus-modal::backdrop {
+    background: rgba(3, 6, 10, .74);
+    backdrop-filter: blur(4px);
+}
+
+.people-shell,
+.petplus-shell {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 32px);
+}
+
+.people-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 18px 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.people-head h2 { margin: 2px 0 0; font-size: 1.05rem; }
+
+.people-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: var(--panel-light);
+    color: var(--text);
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.people-close:hover { border-color: var(--orange); }
+
+.people-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 10px 18px 0;
+}
+
+.people-tab {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--muted);
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.people-tab.active {
+    color: #061018;
+    background: var(--blue);
+    border-color: var(--blue);
+}
+
+.people-body {
+    padding: 14px 18px 20px;
+    overflow-y: auto;
+}
+
+.people-note {
+    margin: 0 0 12px;
+    font-size: .74rem;
+    line-height: 1.55;
+    color: var(--muted);
+}
+
+/* -----------------------------------------
+   NPC cards
+----------------------------------------- */
+
+.npc-grid,
+.mission-grid,
+.assign-grid,
+.item-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 10px;
+}
+
+.npc-card,
+.mission-card,
+.assign-card,
+.item-card {
+    padding: 13px 15px;
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    background: linear-gradient(180deg, var(--panel), #0a121b);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.npc-card.locked,
+.mission-card.locked { opacity: .55; }
+
+.npc-card header,
+.mission-card header,
+.assign-card header,
+.item-card header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.npc-card header span,
+.mission-card header span,
+.assign-card header span,
+.item-card header span { font-size: 1.3rem; line-height: 1; }
+
+.npc-card header strong,
+.mission-card header strong,
+.assign-card header strong,
+.item-card header strong { display: block; font-size: .86rem; }
+
+.npc-card header small,
+.mission-card header small,
+.assign-card header small,
+.item-card header small { display: block; font-size: .65rem; color: var(--muted); }
+
+.item-card header em {
+    margin-left: auto;
+    font-style: normal;
+    font-weight: 700;
+    color: var(--yellow);
+}
+
+.npc-card p,
+.mission-card p,
+.item-card p {
+    margin: 0;
+    font-size: .73rem;
+    line-height: 1.55;
+    color: #b5c2d0;
+}
+
+.npc-standing {
+    display: flex !important;
+    align-items: center;
+    gap: 9px;
+    font-size: .7rem !important;
+    color: var(--text) !important;
+}
+
+.npc-meter {
+    flex: 1;
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, .1);
+    overflow: hidden;
+}
+
+.npc-meter i { display: block; height: 100%; border-radius: 3px; }
+
+.npc-history { font-size: .64rem; color: var(--muted); }
+
+.npc-dot { color: var(--yellow); font-size: .6rem; vertical-align: middle; }
+
+/* -----------------------------------------
+   Dialogue
+----------------------------------------- */
+
+.dialogue { display: flex; flex-direction: column; gap: 13px; }
+
+.dialogue-who {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 10px 13px;
+    border-left: 3px solid var(--blue);
+    border-radius: 0 11px 11px 0;
+    background: rgba(255, 255, 255, .03);
+}
+
+.dialogue-who span { font-size: 1.5rem; line-height: 1; }
+.dialogue-who strong { display: block; font-size: .9rem; }
+.dialogue-who small { display: block; font-size: .66rem; color: var(--muted); }
+
+.dialogue-text {
+    margin: 0;
+    font-size: .92rem;
+    line-height: 1.65;
+    color: #eaf1f8;
+}
+
+.dialogue-options { display: flex; flex-direction: column; gap: 7px; }
+
+.dialogue-option {
+    padding: 11px 14px;
+    border-radius: 11px;
+    border: 1px solid var(--border);
+    background: var(--panel-light);
+    color: var(--text);
+    font-size: .8rem;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color .16s ease, background .16s ease, transform .12s ease;
+}
+
+.dialogue-option:hover {
+    border-color: var(--yellow);
+    background: #1a2534;
+    transform: translateX(2px);
+}
+
+.dialogue-warning {
+    margin: 0;
+    font-size: .67rem;
+    color: var(--muted);
+    font-style: italic;
+}
+
+/* -----------------------------------------
+   Journal
+----------------------------------------- */
+
+.journal {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.journal li {
+    display: flex;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 9px;
+    border-left: 2px solid var(--border);
+    background: rgba(255, 255, 255, .02);
+    font-size: .73rem;
+    color: #bcc9d6;
+}
+
+.journal time { color: var(--muted); font-size: .66rem; flex: 0 0 44px; }
+.journal-good { border-left-color: var(--green); }
+.journal-bad { border-left-color: var(--orange); }
+.journal-combat { border-left-color: #ff6a5a; }
+.journal-research { border-left-color: var(--blue); }
+.journal-story, .journal-event { border-left-color: var(--purple); }
+.journal-build, .journal-renewal { border-left-color: var(--yellow); }
+
+/* -----------------------------------------
+   Event dialog
+----------------------------------------- */
+
+.event-shell { padding: 20px 22px 22px; display: flex; flex-direction: column; gap: 12px; }
+.event-shell h2 { margin: 0; font-size: 1.1rem; }
+.event-text { margin: 0; font-size: .82rem; line-height: 1.6; color: #d2dde8; }
+.event-options { display: flex; flex-direction: column; gap: 7px; }
+
+/* -----------------------------------------
+   Companion training
+----------------------------------------- */
+
+.petplus-layout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+}
+
+.pet-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-height: 56vh;
+    overflow-y: auto;
+}
+
+.pet-row {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 9px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--panel-light);
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+}
+
+.pet-row.active { border-color: var(--blue); background: #16283a; }
+.pet-row-icon { font-size: 1.15rem; line-height: 1; text-align: center; }
+.pet-row-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pet-row-copy strong { font-size: .76rem; }
+.pet-row-copy small { font-size: .62rem; }
+.pet-row-roles { font-size: .7rem; letter-spacing: -1px; }
+
+.pet-xp {
+    display: block;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, .1);
+    overflow: hidden;
+}
+
+.pet-xp i { display: block; height: 100%; background: var(--green); }
+
+.pet-pane {
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    background: linear-gradient(180deg, var(--panel), #0a121b);
+}
+
+.pet-detail { display: flex; flex-direction: column; gap: 10px; }
+.pet-detail header { display: flex; align-items: center; gap: 11px; }
+.pet-detail-icon { font-size: 1.9rem; line-height: 1; }
+.pet-detail header strong { display: block; font-size: .95rem; }
+.pet-detail header small { display: block; font-size: .67rem; }
+.pet-detail h4 {
+    margin: 4px 0 0;
+    font-size: .66rem;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.petplus-actions, .petplus-care { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.slot-list { display: flex; flex-direction: column; gap: 6px; }
+
+.slot-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
+    padding: 7px 10px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, .025);
+    font-size: .72rem;
+}
+
+.slot-name {
+    flex: 0 0 62px;
+    font-size: .62rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.slot-item { flex: 1; min-width: 0; }
+.slot-item small { display: block; font-size: .64rem; color: var(--muted); }
+.slot-empty { flex: 0 0 auto; color: var(--muted); font-style: italic; }
+.slot-none { color: var(--muted); font-size: .64rem; }
+
+.ability-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.ability-list li {
+    padding: 6px 10px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, .02);
+    font-size: .72rem;
+    color: var(--muted);
+}
+
+.ability-list li.got {
+    background: rgba(91, 214, 155, .1);
+    color: #d6ecdf;
+}
+
+.ability-list small { display: block; font-size: .64rem; opacity: .85; }
+
+.assign-current { margin: 0; font-size: .72rem; color: var(--yellow); }
+.assign-options { display: flex; flex-wrap: wrap; gap: 5px; }
+.assign-options .city-mini.active { border-color: var(--green); background: #14281f; }
+
+.petplus-entry {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .02);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.petplus-entry small { font-size: .68rem; color: var(--muted); }
+
+/* -----------------------------------------
+   Responsive
+----------------------------------------- */
+
+@media (max-width: 760px) {
+    .petplus-layout { grid-template-columns: minmax(0, 1fr); }
+    .pet-list { max-height: 180px; flex-direction: row; overflow-x: auto; }
+    .pet-row { flex: 0 0 180px; }
+    .people-body { padding: 12px 14px 18px; }
+    .people-head { padding: 13px 14px 9px; }
+    .people-tabs { padding: 9px 14px 0; flex-wrap: wrap; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dialogue-option { transition: none; }
+    .dialogue-option:hover { transform: none; }
+}

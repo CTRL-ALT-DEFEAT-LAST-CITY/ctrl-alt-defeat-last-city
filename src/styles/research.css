@@ -1,0 +1,168 @@
+/* =========================================
+   LAST CITY · RESEARCH TREE
+   -----------------------------------------
+   A pannable SVG tree with a detail rail. Nodes are real focusable elements,
+   so the whole tree is reachable with a keyboard.
+========================================= */
+
+#researchPanel { display: none; }
+
+body.research-open #researchPanel,
+#researchPanel.expansion-active { display: block; }
+
+.research-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 290px;
+    grid-template-areas:
+        "head   detail"
+        "note   detail"
+        "canvas detail";
+    gap: 12px;
+    align-items: start;
+}
+
+.research-head {
+    grid-area: head;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.research-head h2 { margin: 2px 0 0; font-size: 1.1rem; }
+
+.research-bank { text-align: right; }
+.research-bank span { display: block; font-size: 1.05rem; font-weight: 700; color: var(--blue); }
+.research-bank small { display: block; font-size: .66rem; color: var(--muted); }
+
+.research-note {
+    grid-area: note;
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: rgba(101, 186, 255, .07);
+    font-size: .73rem;
+    color: #c2d4e4;
+}
+
+.research-viewport {
+    grid-area: canvas;
+    overflow: auto;
+    max-height: clamp(340px, 56vh, 620px);
+    border: 1px solid var(--border);
+    border-radius: 15px;
+    background:
+        radial-gradient(circle at 20% 0%, rgba(101, 186, 255, .07), transparent 55%),
+        linear-gradient(180deg, #0a1018, #070b11);
+    cursor: grab;
+    /* A faint blueprint grid behind the tree. */
+    background-image:
+        linear-gradient(rgba(255, 255, 255, .025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, .025) 1px, transparent 1px),
+        radial-gradient(circle at 20% 0%, rgba(101, 186, 255, .07), transparent 55%);
+    background-size: 28px 28px, 28px 28px, 100% 100%;
+}
+
+.research-viewport:active { cursor: grabbing; }
+
+#researchSvg { display: block; }
+
+.era-label {
+    font: 700 11px Inter, Arial, sans-serif;
+    letter-spacing: .14em;
+    opacity: .85;
+}
+
+.tree-link {
+    fill: none;
+    stroke: rgba(255, 255, 255, .12);
+    stroke-width: 2;
+}
+
+.tree-link.ready { stroke: rgba(255, 194, 71, .35); }
+.tree-link.done { stroke: rgba(91, 214, 155, .5); stroke-width: 2.5; }
+
+.tree-node { cursor: pointer; }
+
+.tree-node .node-bg {
+    fill: #101b27;
+    stroke: #26394d;
+    stroke-width: 1.5;
+    transition: fill .16s ease, stroke .16s ease;
+}
+
+.tree-node:hover .node-bg { stroke: #4a7399; }
+.tree-node.available .node-bg { stroke: #ffc247; fill: #14202c; }
+.tree-node.active .node-bg { stroke: #65baff; fill: #10212f; }
+.tree-node.done .node-bg { stroke: #5bd69b; fill: #0e1d19; }
+.tree-node.locked .node-bg { fill: #0b1117; stroke: #1c2733; }
+.tree-node.selected .node-bg { stroke-width: 2.5; stroke: #5eeaff; }
+
+.tree-node:focus { outline: none; }
+.tree-node:focus-visible .node-bg { stroke: #5eeaff; stroke-width: 3; }
+
+.node-icon { font-size: 15px; }
+.node-name { font: 600 11.5px Inter, Arial, sans-serif; fill: #e8eef6; }
+.node-cost { font: 500 10px Inter, Arial, sans-serif; fill: #8193a6; }
+.node-lock { font-size: 11px; text-anchor: end; }
+.node-tick { font-size: 12px; text-anchor: end; fill: #5bd69b; }
+
+.tree-node.locked .node-name { fill: #6d7b8a; }
+
+.research-detail {
+    grid-area: detail;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 15px;
+    background: linear-gradient(180deg, var(--panel), #0a121b);
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    position: sticky;
+    top: 96px;
+}
+
+.research-detail h3 { margin: 0; font-size: .95rem; }
+.research-blurb { margin: 0; font-size: .74rem; line-height: 1.55; color: #b9c6d4; }
+
+.research-missing {
+    margin: 0;
+    padding: 7px 10px;
+    border-radius: 9px;
+    background: rgba(255, 194, 71, .1);
+    border: 1px solid rgba(255, 194, 71, .3);
+    font-size: .7rem;
+    color: #f0dcae;
+}
+
+.research-done {
+    margin: 0;
+    font-size: .73rem;
+    color: var(--green);
+    font-weight: 600;
+}
+
+/* -----------------------------------------
+   Responsive
+----------------------------------------- */
+
+@media (max-width: 1000px) {
+    .research-shell {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas: "head" "note" "canvas" "detail";
+    }
+    .research-detail { position: static; top: auto; }
+}
+
+@media (max-width: 720px) {
+    .research-viewport { max-height: 46vh; }
+    .research-head { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .research-bank { text-align: left; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tree-node .node-bg { transition: none; }
+}
+
+#researchPanel { width: 100%; max-width: none; margin: 0 0 20px; }

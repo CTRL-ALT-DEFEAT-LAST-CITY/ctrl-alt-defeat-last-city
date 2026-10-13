@@ -67,7 +67,7 @@ dialog.start-screen { position: fixed; inset: 0; margin: auto; width: min(720px,
 dialog.start-screen[open] { display: block; }
 body:has(dialog.start-screen[open]) { overflow: hidden; }
 dialog.start-screen::backdrop { background: #030710db; backdrop-filter: blur(8px); }
-.start-card { width: 100%; padding: 36px; border: 0; border-radius: 0; background: linear-gradient(180deg, #08101a88, #101726 57%), url('../../assets/zones/ashfall.png') center top / cover; box-shadow: none; text-align: center; }
+.start-card { width: 100%; padding: 36px; border: 0; border-radius: 0; background: linear-gradient(180deg, #08101a88, #101726 57%), url('../../assets/zones/ashfall.webp') center top / cover; box-shadow: none; text-align: center; }
 .start-emblem { font-size: 76px; line-height: 1.2; display: block; color: #ffcc86; text-shadow: 0 0 40px #ffcc8670; }
 .start-card h2 { font-size: clamp(28px, 5vw, 40px); line-height: 1.2; }
 .start-card > p:not(.eyebrow) { font-size: 14px; color: #d1dded; }

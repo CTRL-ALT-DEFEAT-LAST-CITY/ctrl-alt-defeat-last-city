@@ -167,12 +167,22 @@ function scheduleLorePopup() {
         maybeShowLorePopup();
     }, 0);
 }
+// "build", "combat" and "research" are the three views added by this update.
+// A locked one is refused here as well as in the expansion layer, so a direct
+// call (from a deep link or the console) cannot open a view the player has not
+// unlocked yet.
+const GAME_MODES = ["city", "upgrades", "stats", "companions", "stories", "glyphs", "build", "combat", "research"];
+const BODY_MODES = ["upgrades", "stats", "companions", "stories", "glyphs", "build", "combat", "research"];
 function switchGameMode(mode) {
-    if (!["city", "upgrades", "stats", "companions", "stories", "glyphs"].includes(mode) || window.LastCityCloud?.isSwitching?.()) return;
+    if (!GAME_MODES.includes(mode) || window.LastCityCloud?.isSwitching?.()) return;
+    if (["build", "combat", "research"].includes(mode) && window.LastCityExpansion
+        && window.LastCityExpansion.modeUnlocked && !window.LastCityExpansion.modeUnlocked(mode)) {
+        showNotification("🔒 " + window.LastCityExpansion.modeLockReason(mode));
+        return;
+    }
     const changed = currentGameMode !== mode;
-    if(changed && typeof terminalRememberScreen==='function')terminalRememberScreen();
     currentGameMode = mode;
-    ["upgrades", "stats", "companions", "stories", "glyphs"].forEach(name => document.body.classList.toggle(name + "-open", mode === name));
+    BODY_MODES.forEach(name => document.body.classList.toggle(name + "-open", mode === name));
     gameModeTabs.forEach(tab => { tab.classList.toggle("active", tab.dataset.mode === mode); tab.setAttribute("aria-pressed", String(tab.dataset.mode === mode)); });
     updateGame();
     if (changed) {
