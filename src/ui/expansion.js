@@ -863,44 +863,67 @@
     // actually achieved (including on a save that already did the step).
     // ---------------------------------------------------------------
 
+    // Each step names the control it is talking about so the coach can
+    // highlight it. Nothing advanced — Glyphs, Companions, Stories, Renewal —
+    // appears here; those are introduced by the field guide once the player
+    // has actually unlocked them.
     const TUTORIAL_STEPS = [
         {
             id: "gather", title: "Gather Salvage",
             text: "Press GATHER SALVAGE on the Play tab. Every press is Salvage in hand — it is how the first camp gets paid for.",
+            target: "#energyButton",
             done: () => (liveGame()?.totalClicks || 0) >= 10
         },
         {
             id: "firstCamp", title: "Build a Scavenger Camp",
             text: "Open Upgrades → Buildings and build a Scavenger Camp. Camps earn Salvage every second, whether or not you are clicking.",
+            target: '.game-mode-tab[data-mode="upgrades"]',
             done: () => (liveGame()?.buildings?.scavenger || 0) >= 1
         },
         {
             id: "placeCity", title: "Place it in your city",
-            text: "Open the City tab. Your unplaced camp is waiting in the build tray — drag it onto any lit plot to see it go up.",
+            text: "Open the City tab. Your unplaced camp is waiting in the build tray — drag it onto any lit plot. From the moment it is standing it produces on its own, including while the game is closed.",
+            target: '.game-mode-tab[data-mode="build"]',
             done: () => (state()?.city.plots.length || 0) >= 1
         },
         {
             id: "shelter", title: "House your survivors",
             text: "Build a Crew Shelter, then place it. Shelters add Population, Population strengthens every gather, and survivors can take jobs.",
+            target: '.game-mode-tab[data-mode="upgrades"]',
             done: () => (liveGame()?.buildings?.shelter || 0) >= 1
         },
         {
             id: "assign", title: "Put someone to work",
-            text: "In the City tab, open Jobs and assign a survivor. Filled jobs keep your buildings running at full efficiency.",
+            text: "In the City tab, open Jobs and assign a survivor. Filled jobs keep your buildings running at full efficiency — an unstaffed building still costs you upkeep.",
+            target: '.game-mode-tab[data-mode="build"]',
             done: () => {
                 const stats = cityStats();
                 return stats.workers >= 1;
             }
         },
         {
-            id: "farm", title: "Feed the settlement",
-            text: "Build a Hydro Farm from the City build tray. Food keeps morale up; a shortage quietly cuts your output.",
+            id: "farm", title: "Power and Food",
+            text: "Watch the strip above your city: Power, Food, Security and Workers. Buildings draw Power and eat Food; Generators and Hydro Farms supply them. Build a Hydro Farm — a shortage of either quietly cuts your output.",
+            target: "#cityServiceHud",
             done: () => serviceCount("farm") >= 1
         },
         {
+            id: "upgrades", title: "Spend on Upgrades",
+            text: "Open Upgrades → Tools. Sturdy Gloves raise what you gather by hand, Salvage Accelerator raises everything the city produces. Buy them whenever you can afford one — early levels add flat amounts, later levels start multiplying.",
+            target: '.game-mode-tab[data-mode="upgrades"]',
+            done: () => (liveGame()?.cityTech?.sturdyGloves || 0) >= 1 || (liveGame()?.cityTech?.salvageAccelerator || 0) >= 1
+        },
+        {
             id: "lab", title: "Open the research tree",
-            text: "A Research Lab turns your city into a research engine and unlocks the Research tab, where the long-term upgrades live.",
+            text: "A Research Lab turns your city into a research engine and unlocks the Research tab, where the long-term upgrades live. Research is bought with Salvage Shards and survives renewal.",
+            target: '.game-mode-tab[data-mode="build"]',
             done: () => serviceCount("lab") >= 1
+        },
+        {
+            id: "nextZone", title: "Ashfall is the first of five",
+            text: "Four more zones follow this one, and each one you open feeds a supply link back into the zones before it — nothing you build here becomes obsolete. Ashfall opens the Overgrown Depot once you have 4 City Centers and all 3 beacon modules restored. No need to rush it.",
+            target: '.stage-tab[data-stage="2"]',
+            done: () => !!liveGame()?.stage2Unlocked
         }
     ];
 
@@ -924,14 +947,26 @@
         return null;
     }
 
+    // Only one control is ever highlighted, and it is cleared the moment the
+    // tutorial stops pointing at it.
+    function highlightTutorialTarget(selector) {
+        const target = selector ? document.querySelector(selector) : null;
+        document.querySelectorAll(".onboarding-highlight").forEach(node => {
+            if (node !== target) node.classList.remove("onboarding-highlight");
+        });
+        if (target) target.classList.add("onboarding-highlight");
+    }
+
     function renderTutorial() {
         const mount = document.getElementById("tutorialCoach");
         if (!mount) return;
         const exp = state();
-        if (!exp || !ready()) { mount.hidden = true; return; }
+        if (!exp || !ready()) { mount.hidden = true; highlightTutorialTarget(null); return; }
 
         const step = currentTutorialStep();
-        if (!step) { mount.hidden = true; return; }
+        if (!step) { mount.hidden = true; highlightTutorialTarget(null); return; }
+
+        highlightTutorialTarget(step.target);
 
         const index = TUTORIAL_STEPS.findIndex(s => s.id === step.id) + 1;
         const signature = step.id + ":" + index;
@@ -941,13 +976,14 @@
         mount.innerHTML =
             '<div class="coach-body"><p class="eyebrow">GETTING STARTED · STEP ' + index + ' / ' + TUTORIAL_STEPS.length + '</p>' +
             '<strong>' + step.title + '</strong><p>' + step.text + '</p></div>' +
-            '<button type="button" id="tutorialDismiss" class="secondary-button">Hide guide</button>';
+            '<button type="button" id="tutorialDismiss" class="secondary-button">Skip tutorial</button>';
         document.getElementById("tutorialDismiss")?.addEventListener("click", () => {
             const live = state();
             if (!live) return;
             live.tutorial.dismissed = true;
             mount.hidden = true;
-            notify("Guide hidden. Re-open it from the field manual (?) at any time.");
+            highlightTutorialTarget(null);
+            notify("Tutorial skipped. Reopen it with Replay tutorial in the ? Guide.");
             save();
         });
     }
@@ -1064,7 +1100,9 @@
         // lifecycle
         init, render, tick, onLoad, onRebirth, onStageReset,
         // tutorial
-        TUTORIAL_STEPS, resumeTutorial, currentTutorialStep
+        TUTORIAL_STEPS, resumeTutorial, currentTutorialStep,
+        // the city log, so the radio operator can speak through it
+        logEvent
     };
 
     // These three are called from the original game files by name, so they are

@@ -527,7 +527,7 @@
     }
 
     function detail(id) {
-        if (!id) return '<p class="people-note">Hatch a companion first — eggs are in the Pets tab.</p>';
+        if (!id) return '<p class="people-note">Hatch a companion first — eggs are in the Companions tab.</p>';
         const state = exp();
         const rarity = petRarity(id);
         const petLevel = level(id);

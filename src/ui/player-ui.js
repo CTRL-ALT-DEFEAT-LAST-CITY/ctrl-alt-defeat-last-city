@@ -24,7 +24,41 @@ function renderPlayerUI() {
     }
     renderPurchaseUI();
     renderRenewalPreview();
+    renderLevelBar();
+    if (typeof updateOnboarding === "function") {
+        try { updateOnboarding(); } catch (error) { console.error("[LastCity] onboarding:", error); }
+    }
 }
+// Reconstruction level, build allowance and the bar between them.
+function renderLevelBar() {
+    if (typeof levelState !== "function") return;
+    const p = levelState();
+    const need = xpForLevel(p.level);
+    const left = allowanceLeft();
+    const label = el('levelLabel');
+    if (label && label.textContent !== 'LEVEL ' + p.level) label.textContent = 'LEVEL ' + p.level;
+    const allowance = el('levelAllowance');
+    if (allowance) {
+        const text = left + (left === 1 ? ' build' : ' builds');
+        if (allowance.textContent !== text) allowance.textContent = text;
+        allowance.classList.toggle('level-empty', left < 1);
+    }
+    const fill = el('levelFill');
+    if (fill) {
+        const percent = Math.max(0, Math.min(100, (p.xp / Math.max(1, need)) * 100));
+        const width = percent.toFixed(1) + '%';
+        if (fill.style.width !== width) fill.style.width = width;
+    }
+    const hint = el('levelHint');
+    if (hint) {
+        const next = allowanceNextIn();
+        const text = left < 1 && next > 0
+            ? 'Next build in ' + next + 's'
+            : formatNumber(Math.floor(p.xp)) + ' / ' + formatNumber(need) + ' XP';
+        if (hint.textContent !== text) hint.textContent = text;
+    }
+}
+
 function scrollPlayerSection() {
     // Scroll a non-sticky anchor: a pinned header's current rect is not its page position.
     const panel = el(currentGameMode === 'upgrades' ? 'purchaseAnchor' : currentGameMode === 'city' ? 'worldBanner' : currentGameMode === "companions" ? "companionPanel" : currentGameMode === "glyphs" ? "glyphPanel" : currentGameMode === "stories" ? "storyPanel" : "statsPanel");
@@ -93,7 +127,10 @@ function firstCityGuide() {
         {kind:'tools',key:'sturdyGloves',title:'Improve your gathering tool',label:'Upgrade Salvage Tool',target:'#techUpgrades [data-economy-upgrade="sturdyGloves"]'},
         {kind:'tools',key:'salvageAccelerator',title:'Start your Production Drive',label:'Upgrade Production Drive',target:'#techUpgrades [data-economy-upgrade="salvageAccelerator"]'},
         {kind:'buildings',key:'shelter',title:'Build a Crew Shelter',label:'Build Crew Shelter',target:'#buyShelter'},
-        {kind:'buildings',key:'workshop',title:'Build your first Workshop',label:'Build Workshop',target:'#buyWorkshop'}
+        {kind:'buildings',key:'workshop',title:'Build your first Workshop',label:'Build Workshop',target:'#buyWorkshop'},
+        {kind:'buildings',key:'power',title:'Restore power to the city',label:'Build Power Plant',target:'#buyPower'},
+        {kind:'tools',key:'salvageMagnet',title:'Automate your gathering',label:'Buy Auto Harvester',target:'#techUpgrades [data-economy-upgrade="salvageMagnet"]'},
+        {kind:'buildings',key:'citycenter',title:'Build your first City Center',label:'Build City Center',target:'#buyCitycenter'}
     ];
     const step = game.adventure.progression.beaconModules === 0 ? steps.find(item => !(item.kind==='buildings'?game.buildings:game.cityTech)[item.key]) : null;
     const cost = step ? step.kind === 'buildings' ? getBuildingCost(step.key) : getTechCost(TECH_UPGRADES[step.key],game.cityTech[step.key]) : beaconCost();
@@ -144,8 +181,7 @@ function renewalSummary(stage) {
     if (!archivedBoard) reset.push(city ? 'City tools and non-permanent upgrades, except Auto Harvesters' : 'Local production and activity tool levels');
     if (city) reset.push('Gathering momentum and this-run Salvage total');
     if (stage === 3) reset.push('Current engine order, assembly pieces and paid input cost — finish delivery first');
-    const count = city ? game.rebirths : game['stage'+stage+'Resets'], base = city ? 2 : 1.5;
-    const before = stageResetMultiplier(stage), after = Math.min(1e100,Math.pow(base,count+1));
+    const before = stageResetMultiplier(stage), after = nextStageResetMultiplier(stage);
     const gain = ['Permanent ' + ZONES[stage].label + ' renewal multiplier ×' + formatNumber(before) + ' → ×' + formatNumber(after),
         '+' + (city ? calculateRebirthShards() + ' Salvage Shards' : stageResetReward(stage) + ' local reset Tokens')];
     if (city && game.rebirthUpgrades.headStart) gain.push('Head Start: 1,000 Salvage and at least one Camp');
