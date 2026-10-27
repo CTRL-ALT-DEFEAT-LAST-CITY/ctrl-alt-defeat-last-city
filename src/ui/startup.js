@@ -1,6 +1,7 @@
 // The title page owns its presentation, optional audio and explicit daily claim.
 const LAST_CITY_BUILD = { version: '1.0.3-dev', date: '2026.10.11', channel: 'Local review' };
 let startupSaveAvailable = false, ambientAudioArmed = false, ambientLoop = null, dailyClaimError = '';
+let newGuestConfirmed = false;
 
 function normalizeDailyReward(saved = {}) {
     const day = typeof saved?.lastDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(saved.lastDay)
@@ -11,8 +12,16 @@ function normalizeDailyReward(saved = {}) {
 }
 function dailyRewardState(now = Date.now()) {
     const today = new Date(now).toISOString().slice(0, 10), saved = game.dailyReward;
+    // Daily crate. The old floor was a flat 250 Salvage, which handed a brand
+    // new player roughly seventeen Scavenger Camps before they had gathered
+    // anything — it skipped the whole Gather -> Build -> Automate lesson. The
+    // floor now starts small and grows with the zones the player has opened,
+    // and the production-based term still takes over for established cities.
+    const stagesOpen = 1 + Number(!!game.stage2Unlocked) + Number(!!game.stage3Unlocked)
+        + Number(!!game.stage4Unlocked) + Number(!!game.stage5Unlocked);
+    const floorAmount = [0, 25, 120, 600, 3000, 15000][stagesOpen] || 25;
     return { today, eligible: saved.lastDay < today && now >= saved.lastClaimAt,
-        amount: Math.ceil(Math.max(250, Math.min(1e100, getSalvagePerSecond() * 60))) };
+        amount: Math.ceil(Math.max(floorAmount, Math.min(1e100, getSalvagePerSecond() * 60))) };
 }
 function claimDailyReward() {
     if (document.hidden || !el('introModal')?.open || gameStarted || window.LastCityCloud?.isSwitching?.()
@@ -35,8 +44,16 @@ function claimDailyReward() {
     playSfx('dispatch');
     return true;
 }
+// True when nobody is signed in, so the save in play is the shared browser
+// guest slot rather than an account's own city.
+function isGuestSession() {
+    try { return typeof getSaveKey === "function" && getSaveKey() === GUEST_SAVE_KEY; }
+    catch (_) { return true; }
+}
+
 function renderStartupPage() {
     const stage = [5, 4, 3, 2, 1].find(isZoneUnlocked);
+    const guest = isGuestSession(), storedGuest = guest ? guestSaveSummary() : null;
     const values = {
         startProgress: startupSaveAvailable ? 'Continue saved city — Rebirth ' + game.rebirths + ' · Stage ' + stage : 'New Game — your first city awaits',
         startSaveHint: (el('cloudSaveStatus')?.textContent || 'Guest play · saved on this device') + (startupSaveAvailable ? ' · ' + formatDuration(game.playTimeSeconds) + ' played' : ''),
@@ -45,6 +62,25 @@ function renderStartupPage() {
     for (const [id, value] of Object.entries(values)) if (el(id) && el(id).textContent !== value) el(id).textContent = value;
     if (el('startContinueButton')) { el('startContinueButton').hidden = !startupSaveAvailable; el('startContinueButton').disabled = !!window.LastCityCloud?.isSwitching?.(); }
     if (el('introStartButton')) el('introStartButton').disabled = !!window.LastCityCloud?.isSwitching?.();
+
+    // Guest mode. One browser is often shared, so a guest is asked whether the
+    // stored city is theirs instead of silently inheriting the last person's.
+    const newGuest = el('startNewGuestButton');
+    if (newGuest) {
+        newGuest.hidden = !(guest && storedGuest);
+        newGuest.disabled = !!window.LastCityCloud?.isSwitching?.();
+    }
+    if (el('startPlayLabel') && guest) {
+        el('startPlayLabel').textContent = storedGuest ? 'CONTINUE GUEST CITY' : 'PLAY AS GUEST';
+    }
+    if (guest && storedGuest && el('startProgress')) {
+        el('startProgress').textContent = 'Guest city on this browser — Rebirth ' + storedGuest.rebirths +
+            ' · Stage ' + storedGuest.stage +
+            (storedGuest.playTimeSeconds ? ' · ' + formatDuration(storedGuest.playTimeSeconds) + ' played' : '');
+    }
+    if (guest && storedGuest && el('startAccountHint')) {
+        el('startAccountHint').textContent = 'Not your city? Choose “Start a new guest game” below. Account cities are stored separately and are never replaced.';
+    }
     const daily = dailyRewardState();
     el('dailyRewardAmount').textContent = formatNumber(daily.eligible ? daily.amount : game.dailyReward.lastAmount) + ' Salvage';
     el('dailyRewardButton').disabled = !daily.eligible || !!window.LastCityCloud?.isSwitching?.();
@@ -117,6 +153,40 @@ function syncAmbientAudio() {
         else try { context?.close()?.catch?.(() => {}); } catch (_) { }
     }
 }
+// Starts a brand-new guest city. The previous guest city is moved aside rather
+// than deleted, so a mis-tap is recoverable, and account cities are untouched
+// because they live under their own save keys.
+function startNewGuestGame() {
+    if (window.LastCityCloud?.isSwitching?.()) return false;
+    if (!isGuestSession()) { showNotification('Sign out first to start a guest city.'); return false; }
+    const summary = guestSaveSummary();
+    if (summary && !newGuestConfirmed) {
+        newGuestConfirmed = true;
+        const button = el('startNewGuestButton');
+        if (button) button.textContent = 'Tap again to replace the guest city';
+        if (el('startSaveHint')) {
+            el('startSaveHint').textContent = 'The current guest city (Rebirth ' + summary.rebirths +
+                ') will be set aside and a new one started.';
+        }
+        setTimeout(() => {
+            newGuestConfirmed = false;
+            const reset = el('startNewGuestButton');
+            if (reset) reset.textContent = 'Start a new guest game';
+            renderStartupPage();
+        }, 6000);
+        return false;
+    }
+    newGuestConfirmed = false;
+    archiveGuestSave();
+    startupSaveAvailable = false;
+    startFreshCity('');
+    const button = el('startNewGuestButton');
+    if (button) button.textContent = 'Start a new guest game';
+    renderStartupPage();
+    playSfx('ui');
+    return true;
+}
+
 function initStartupUI() {
     el('startContinueButton')?.addEventListener('click',()=>typeof launchCityTerminal==='function'?launchCityTerminal():closeIntroModal());
     el('startSettingsButton')?.addEventListener('click', () => toggleStartupPanel('startSettingsPanel'));
@@ -132,6 +202,7 @@ function initStartupUI() {
         game.effectsEnabled = game.effectsEnabled === false; syncVfxPreference(); renderStartupSettings(); saveGame(false);
     });
     el('startResetButton')?.addEventListener('click', resetAllProgress);
+    el('startNewGuestButton')?.addEventListener('click', startNewGuestGame);
     el('dailyRewardButton')?.addEventListener('click', claimDailyReward);
     el('introModal')?.addEventListener('cancel', event => {
         event.preventDefault();

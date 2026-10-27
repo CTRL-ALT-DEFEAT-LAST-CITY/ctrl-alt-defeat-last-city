@@ -51,7 +51,13 @@
         for (const id of ['accountButton', 'settingsAccountButton']) if (el(id)) {
             el(id).textContent = owner ? '☁ Manage / Switch account' : '☁ Create account / Log in'; el(id).disabled = switching;
         }
-        if (el('startPlayLabel')) el('startPlayLabel').textContent = owner ? 'PLAY' : 'PLAY AS GUEST';
+        // A guest with a city already on this browser is offered CONTINUE, not
+        // PLAY, so the next person at the same machine can tell the two apart.
+        // This runs after renderStartupPage, so it has to agree with it.
+        let guestLabel = 'PLAY AS GUEST';
+        try { if (typeof guestSaveExists === 'function' && guestSaveExists()) guestLabel = 'CONTINUE GUEST CITY'; }
+        catch (_) { }
+        if (el('startPlayLabel')) el('startPlayLabel').textContent = owner ? 'PLAY' : guestLabel;
         if (el('startAccountHint')) el('startAccountHint').textContent = owner ? 'Signed in · cloud saves sync with this account.' : 'Guest play saves on this device. Log in later through Settings to import your guest city.';
         if (el('settingsAccountStatus')) el('settingsAccountStatus').textContent = owner ? 'Signed in · ' + clientUserEmail : 'Guest · saved on this device. Log in to enable cloud saves.';
         if (el('settingsCloudSyncButton')) { el('settingsCloudSyncButton').textContent = owner ? '☁ Sync cloud now' : '☁ Save to cloud / Log in'; el('settingsCloudSyncButton').disabled = switching || !!uploading || !!conflict; }

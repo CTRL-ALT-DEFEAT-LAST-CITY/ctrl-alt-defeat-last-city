@@ -1,0 +1,379 @@
+/* =========================================
+   LAST CITY · ONBOARDING AND SAVE RECOVERY
+   -----------------------------------------
+   The legacy-save notice, the guest-mode control, the progressive tutorial
+   and the ? Guide. Styled to match the existing terminal/industrial look:
+   square corners, amber accents, dark panels.
+========================================= */
+
+/* -----------------------------------------
+   Legacy save recovery
+----------------------------------------- */
+
+.save-recovery-modal {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    width: min(540px, calc(100vw - 32px));
+    max-width: none;
+    max-height: calc(100dvh - 32px);
+    padding: 0;
+    border: 1px solid var(--yellow);
+    background: #101726;
+    color: var(--text);
+    overflow: auto;
+    box-shadow: 0 30px 110px #000c;
+}
+
+.save-recovery-modal:not([open]) { display: none; }
+.save-recovery-modal::backdrop { background: #02060edb; backdrop-filter: blur(7px); }
+
+.recovery-shell { padding: 22px 24px 20px; display: flex; flex-direction: column; gap: 11px; }
+.recovery-shell h2 { margin: 0; font-size: 1.15rem; }
+.recovery-shell p { margin: 0; font-size: .8rem; line-height: 1.6; color: #c3d0dd; }
+
+.recovery-list {
+    margin: 0;
+    padding: 10px 12px 10px 28px;
+    border-left: 3px solid var(--yellow);
+    background: rgba(255, 194, 71, .08);
+    font-size: .78rem;
+    line-height: 1.65;
+    color: #f0e2c4;
+}
+
+.recovery-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+
+.recovery-primary, .recovery-secondary {
+    flex: 1 1 auto;
+    padding: 11px 16px;
+    border-radius: 0;
+    border: 1px solid var(--border);
+    font-size: .8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color .16s ease, background .16s ease;
+}
+
+/* --yellow is the LIVE ZONE COLOUR, --orange a fixed cool accent. Blending
+   the two gave a gold-to-periwinkle ramp that reads as a mistake rather than
+   a choice. Primary buttons stay in one hue, shaded, so they follow the zone
+   the way the rest of the interface does. */
+.recovery-primary {
+    background: linear-gradient(160deg, var(--yellow), color-mix(in srgb, var(--yellow) 70%, #000));
+    border-color: var(--yellow);
+    color: #16110a;
+}
+
+.recovery-primary:hover { filter: brightness(1.1); }
+.recovery-secondary { background: var(--panel-light); color: var(--text); }
+.recovery-secondary:hover { border-color: var(--yellow); background: var(--panel); }
+
+.recovery-note { font-size: .68rem !important; color: var(--muted) !important; }
+
+/* -----------------------------------------
+   Guest mode control
+----------------------------------------- */
+
+#startNewGuestButton[hidden] { display: none; }
+
+#startNewGuestButton {
+    border-color: rgba(255, 194, 71, .45);
+    color: #f1dcae;
+}
+
+#startNewGuestButton:hover { border-color: var(--yellow); background: rgba(255, 194, 71, .12); }
+
+/* ===========================================================
+   TUTORIAL HIGHLIGHT
+   The coach itself is rendered by src/ui/expansion.js; this is the ring it
+   draws around whichever control the current step is talking about.
+   =========================================================== */
+/* The highlighted control. Outline only, so nothing shifts position. */
+.onboarding-highlight {
+    position: relative;
+    outline: 2px solid var(--yellow);
+    outline-offset: 3px;
+    animation: onboardingPulse 1.6s ease-in-out infinite;
+}
+@keyframes onboardingPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 194, 71, .40); }
+    50%      { box-shadow: 0 0 0 7px rgba(255, 194, 71, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .onboarding-highlight { animation: none; }
+}
+
+/* ===========================================================
+   FIELD GUIDE
+   =========================================================== */
+.guide-modal {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    width: min(760px, calc(100vw - 28px));
+    max-height: min(84vh, 760px);
+    padding: 0;
+    background: var(--panel);
+    border: 1px solid var(--yellow);
+    border-radius: 0;
+    color: var(--text);
+    box-shadow: 0 26px 70px rgba(0, 0, 0, .72);
+    overflow: hidden;
+}
+.guide-modal::backdrop { background: rgba(3, 6, 11, .78); }
+.guide-shell { display: flex; flex-direction: column; max-height: inherit; }
+.guide-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border);
+}
+.guide-header h2 { margin: 2px 0 0; font-size: 1.16rem; letter-spacing: .02em; }
+.guide-close {
+    font: inherit;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    width: 34px;
+    height: 34px;
+    border-radius: 0;
+    cursor: pointer;
+    flex: none;
+}
+.guide-close:hover { border-color: var(--orange); color: var(--text); }
+.guide-body { overflow-y: auto; padding: 4px 20px 8px; }
+.guide-section { padding: 14px 0; border-bottom: 1px solid rgba(38, 57, 77, .55); }
+.guide-section:last-child { border-bottom: 0; }
+.guide-section h3 {
+    margin: 0 0 7px;
+    font-size: .95rem;
+    color: var(--yellow);
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+.guide-section p { margin: 0 0 8px; font-size: .87rem; line-height: 1.55; color: #c6d2de; }
+.guide-section p:last-child { margin-bottom: 0; }
+.guide-section strong { color: var(--text); }
+.guide-locked h3 { color: var(--muted); }
+.guide-locked p { color: #7b8b9c; font-style: italic; }
+.guide-lock { letter-spacing: .14em; color: var(--border); }
+.guide-footer {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 13px 20px;
+    border-top: 1px solid var(--border);
+    background: rgba(8, 13, 20, .6);
+}
+.guide-replay {
+    font: inherit;
+    font-size: .82rem;
+    padding: 9px 16px;
+    background: linear-gradient(160deg, var(--yellow), color-mix(in srgb, var(--yellow) 70%, #000));
+    border: 1px solid var(--yellow);
+    border-radius: 0;
+    color: #1a1206;
+    font-weight: 700;
+    letter-spacing: .05em;
+    cursor: pointer;
+    flex: none;
+}
+.guide-replay:hover { filter: brightness(1.08); }
+.guide-note { margin: 0; font-size: .76rem; color: var(--muted); }
+
+#guideButton { letter-spacing: .04em; }
+
+@media (max-width: 640px) {
+    .guide-footer { flex-direction: column; align-items: stretch; gap: 8px; }
+    .guide-replay { width: 100%; }
+}
+
+/* Companion backstories: present, but never louder than the bonus. */
+.pet-story {
+    margin: 6px 0 8px;
+    font-size: .78rem;
+    line-height: 1.45;
+    color: #93a5b7;
+    font-style: italic;
+}
+
+.stat-note {
+    margin: 0 0 10px;
+    font-size: .78rem;
+    line-height: 1.45;
+    color: var(--muted);
+}
+
+/* ===========================================================
+   LOCKED ZONE PANEL
+   Name, LOCKED, and the tick-list that opens it. Nothing else.
+   =========================================================== */
+.locked-zone-modal {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    width: min(430px, calc(100vw - 28px));
+    padding: 0;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 0;
+    color: var(--text);
+    box-shadow: 0 22px 60px rgba(0, 0, 0, .7);
+}
+.locked-zone-modal::backdrop { background: rgba(3, 6, 11, .78); }
+.locked-zone-shell { padding: 22px 22px 18px; }
+.locked-zone-shell .eyebrow { margin: 0 0 4px; font-size: .68rem; letter-spacing: .18em; color: var(--muted); }
+.locked-zone-shell h2 { margin: 0; font-size: 1.5rem; letter-spacing: .08em; }
+.locked-zone-state {
+    margin: 6px 0 18px;
+    font-size: .76rem;
+    letter-spacing: .26em;
+    color: var(--orange);
+}
+.locked-zone-intro {
+    margin: 0 0 8px;
+    font-size: .7rem;
+    letter-spacing: .16em;
+    color: var(--muted);
+    text-transform: uppercase;
+}
+.locked-zone-reqs { list-style: none; margin: 0 0 18px; padding: 0; }
+.locked-zone-reqs li {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid rgba(38, 57, 77, .5);
+    font-size: .86rem;
+}
+.locked-zone-reqs li:last-child { border-bottom: 0; }
+.req-mark { flex: none; width: 14px; font-weight: 700; }
+.req-label { flex: 1; }
+.req-count { flex: none; color: var(--muted); font-variant-numeric: tabular-nums; }
+.req-done .req-mark { color: var(--green); }
+.req-done .req-label { color: var(--muted); }
+.req-todo .req-mark { color: var(--orange); }
+.locked-zone-shell .recovery-primary { width: 100%; }
+
+/* ===========================================================
+   ZONE UNLOCK
+   The biggest moment in the game, given a panel rather than a toast.
+   Deliberately short: what was restored, what is new, what it gives.
+   =========================================================== */
+.zone-unlock-modal {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    width: min(460px, calc(100vw - 28px));
+    padding: 0;
+    background: var(--panel);
+    border: 1px solid var(--yellow);
+    border-radius: 0;
+    color: var(--text);
+    box-shadow: 0 26px 70px rgba(0, 0, 0, .75), 0 0 0 1px rgba(255, 255, 255, .04);
+}
+.zone-unlock-modal::backdrop { background: rgba(3, 6, 11, .82); }
+.zone-unlock-shell { padding: 24px 24px 20px; }
+.zone-unlock-shell .eyebrow {
+    margin: 0 0 6px;
+    font-size: .66rem;
+    letter-spacing: .18em;
+    color: var(--muted);
+    text-transform: uppercase;
+}
+.zone-unlock-shell h2 {
+    margin: 0 0 8px;
+    font-size: 1.55rem;
+    letter-spacing: .07em;
+    color: var(--yellow);
+}
+.zone-unlock-line { margin: 0 0 18px; font-size: .92rem; line-height: 1.5; color: #c6d2de; }
+.zone-unlock-label {
+    margin: 0 0 7px;
+    font-size: .64rem;
+    letter-spacing: .2em;
+    color: var(--muted);
+    text-transform: uppercase;
+}
+.zone-unlock-adds { list-style: none; margin: 0 0 18px; padding: 0; }
+.zone-unlock-adds li {
+    padding: 5px 0 5px 16px;
+    position: relative;
+    font-size: .88rem;
+    color: var(--text);
+}
+.zone-unlock-adds li::before {
+    content: "\2022";
+    position: absolute;
+    left: 2px;
+    color: var(--yellow);
+}
+.zone-unlock-benefit {
+    margin: 0 0 20px;
+    padding: 9px 12px;
+    background: rgba(255, 255, 255, .04);
+    border-left: 3px solid var(--yellow);
+    font-size: .86rem;
+    color: var(--yellow);
+}
+.zone-unlock-shell .recovery-primary { width: 100%; }
+
+@media (max-width: 640px) {
+    .zone-unlock-shell { padding: 20px 18px 16px; }
+    .zone-unlock-shell h2 { font-size: 1.3rem; }
+}
+
+/* ===========================================================
+   RECONSTRUCTION LEVEL
+   Sits in the wallet bar beside Salvage: the level, the build
+   allowance, and the experience between them.
+   =========================================================== */
+.wallet-level {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 148px;
+    padding: 0 4px;
+}
+.level-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+}
+.level-head span {
+    font-size: .62rem;
+    letter-spacing: .16em;
+    color: var(--muted);
+}
+.level-head strong {
+    font-size: .74rem;
+    letter-spacing: .04em;
+    color: var(--yellow);
+    font-variant-numeric: tabular-nums;
+}
+.level-head strong.level-empty { color: var(--orange); }
+.level-track {
+    height: 4px;
+    background: rgba(255, 255, 255, .08);
+    border-radius: 0;
+    overflow: hidden;
+}
+.level-fill {
+    height: 100%;
+    background: var(--yellow);
+    transition: width .3s ease;
+}
+.wallet-level small {
+    font-size: .6rem;
+    letter-spacing: .04em;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+}
+@media (max-width: 760px) {
+    .wallet-level { min-width: 112px; }
+    .wallet-level small { display: none; }
+}

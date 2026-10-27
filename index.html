@@ -20,12 +20,18 @@
     <link rel="stylesheet" href="src/styles/research.css">
     <link rel="stylesheet" href="src/styles/cinematic.css">
     <link rel="stylesheet" href="src/styles/companions-plus.css">
+    <link rel="stylesheet" href="src/styles/onboarding.css">
 </head>
 <body>
 
 <section class="wallet-bar" aria-label="Current zone wallet">
     <div class="wallet-primary"><span id="walletLabel">SALVAGE</span><strong id="walletBalance">0</strong><small id="walletRate">+0 / sec</small><small id="feedbackBoostBadge" class="feedback-boost" hidden></small></div>
     <div class="wallet-secondary"><span id="walletTokenLabel">SHARDS</span><strong id="walletTokens">0</strong></div>
+    <div class="wallet-level" aria-label="Reconstruction level and build allowance">
+        <div class="level-head"><span id="levelLabel">LEVEL 1</span><strong id="levelAllowance">8 builds</strong></div>
+        <div class="level-track"><div id="levelFill" class="level-fill" style="width:0%"></div></div>
+        <small id="levelHint">0 / 60 XP</small>
+    </div>
     <div class="wallet-luck" aria-label="Glyph luck"><span>✧ LUCK</span><strong id="walletLuck">×1.00</strong></div>
 </section>
 
@@ -37,6 +43,7 @@
     </div>
     <div class="header-buttons">
         <button id="zoneHelpButton" class="secondary-button" type="button" aria-label="Help for the current zone" title="Current zone field manual">?</button>
+        <button id="guideButton" class="secondary-button" type="button" aria-label="How to play" title="How to play — field guide">? Guide</button>
         <details id="playerSettings" class="player-settings">
             <summary>⚙ Settings</summary>
             <div class="settings-menu"><p class="eyebrow">ACCOUNT &amp; SAVES</p>
@@ -76,7 +83,7 @@
         <button class="game-mode-tab" data-mode="research"><span class="nav-icon" aria-hidden="true">⚗</span><span>Research</span></button>
         <button class="game-mode-tab" data-mode="upgrades"><span class="nav-icon" aria-hidden="true">↗</span><span>Upgrades</span><span id="upgradeReadyCount" class="ready-badge" hidden>0</span></button>
         <button class="game-mode-tab" data-mode="glyphs"><span class="nav-icon" aria-hidden="true">✧</span><span>Glyphs</span></button>
-        <button class="game-mode-tab" data-mode="companions"><span class="nav-icon" aria-hidden="true">♧</span><span>Pets</span></button>
+        <button class="game-mode-tab" data-mode="companions"><span class="nav-icon" aria-hidden="true">♧</span><span>Companions</span></button>
         <button class="game-mode-tab" data-mode="stories"><span class="nav-icon" aria-hidden="true">▤</span><span>Stories</span><span id="storyUnreadCount" class="ready-badge" hidden>0</span></button>
         <button class="game-mode-tab" data-mode="stats"><span class="nav-icon" aria-hidden="true">▦</span><span>Stats</span></button>
     </nav>
@@ -481,6 +488,7 @@
         <article class="stat-group"><h3>⚙️ City Economy</h3><div class="stat-lines"><div><span>Lifetime Salvage earned</span><strong id="statLifetimeSalvage">0</strong></div><div><span>Best Salvage/sec</span><strong id="statBestRate">0</strong></div><div><span>Buildings constructed</span><strong id="statBuildingsBuilt">0</strong></div><div><span>Highest momentum</span><strong id="statHighestCombo">0x</strong></div></div></article>
         <article class="stat-group"><h3>📡 City Operations</h3><div class="stat-lines"><div><span>Supply Drops secured</span><strong id="statSupplyDrops">0</strong></div><div><span>Contracts completed</span><strong id="statContracts">0</strong></div><div><span>Badges earned</span><strong id="statBadges">0 / 5</strong></div><div><span>Current population</span><strong id="statPopulation">0</strong></div></div></article>
         <article class="stat-group"><h3>🌅 Legacy</h3><div class="stat-lines"><div><span>Rebirths</span><strong id="statRebirths">0</strong></div><div><span>Settlement resets</span><strong id="statStage2Resets">0</strong></div><div><span>Stages unlocked</span><strong id="statStagesUnlocked">1 / 5</strong></div><div><span>Salvage Shards</span><strong id="statShards">0</strong></div></div></article>
+        <article class="stat-group" id="supplyNetworkGroup"><h3>🔗 Civilisation bonuses</h3><p class="stat-note">Every zone you restore permanently helps the zones before it. Nothing you build becomes obsolete.</p><div class="stat-lines" id="supplyNetworkLines"></div></article>
         <article class="stat-group"><h3>✧ Permanent glyphs</h3><div class="stat-lines"><div><span>Glyph batches rolled</span><strong id="statGlyphRolls">0</strong></div><div><span>Unique glyphs discovered</span><strong id="statGlyphUnique">0 / 60</strong></div><div><span>Glyph copies collected</span><strong id="statGlyphCollected">0</strong></div><div><span>Glyphs at collection cap</span><strong id="statGlyphMaxed">0 / 60</strong></div><div><span>Global Luck</span><strong id="statGlyphLuck">×1.00</strong></div><div><span>Current zone glyph power</span><strong id="statGlyphPower">×1.00</strong></div><div><span>Preservation blueprints</span><strong id="statPreservation">0 / 6</strong></div></div></article>
     </div>
 </section>
@@ -538,6 +546,7 @@
                 <div class="start-account"><button id="accountButton">☁ Create account / Log in</button><p id="startAccountHint">Guest play saves on this device. Create an account to keep your city in the cloud.</p></div>
                 <nav class="start-secondary" aria-label="Startup options">
                     <button id="startContinueButton" hidden>Continue saved city</button>
+                    <button id="startNewGuestButton" hidden>Start a new guest game</button>
                     <button id="startSettingsButton" aria-expanded="false" aria-controls="startSettingsPanel">⚙ Settings</button>
                     <button id="startCreditsButton" aria-expanded="false" aria-controls="startCreditsPanel">Credits / About</button>
                     <button id="startFeedbackButton">✉ Feedback</button>
@@ -700,9 +709,27 @@
     </form>
 </dialog>
 
+<dialog id="guideModal" class="guide-modal" aria-labelledby="guideTitle">
+    <div class="guide-shell">
+        <header class="guide-header">
+            <div>
+                <p class="eyebrow">FIELD GUIDE</p>
+                <h2 id="guideTitle">How to play LAST CITY</h2>
+            </div>
+            <button type="button" id="guideClose" class="guide-close" aria-label="Close the field guide">✕</button>
+        </header>
+        <div id="guideBody" class="guide-body"></div>
+        <footer class="guide-footer">
+            <button type="button" id="guideReplay" class="guide-replay">Replay tutorial</button>
+            <p class="guide-note">Locked sections open as you reach the systems they describe.</p>
+        </footer>
+    </div>
+</dialog>
+
 <script src="src/cloud/cloud-config.js?v=google-1"></script>
 <!-- migration.js MUST load before game.js: defaultGame calls
      normalizeExpansion() while it is being constructed. -->
+<script src="src/game/levels.js"></script>
 <script src="src/game/migration.js"></script>
 <script src="src/game/audio.js"></script>
 <script src="src/game/progression.js"></script>
@@ -726,6 +753,7 @@
 <script src="src/game/research.js"></script>
 <script src="src/game/events.js"></script>
 <script src="src/game/companions-plus.js"></script>
+<script src="src/ui/onboarding.js"></script>
     <script src="src/cloud/cloud-save.js?v=account-recovery-1"></script>
 </body>
 </html>

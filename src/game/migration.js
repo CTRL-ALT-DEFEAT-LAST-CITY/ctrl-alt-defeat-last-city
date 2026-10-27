@@ -599,3 +599,397 @@ if (typeof module !== "undefined" && module.exports) {
         expFlagMap
     };
 }
+
+// =============================================
+// SAVE VERSIONING AND LEGACY ECONOMY RECOVERY
+// ---------------------------------------------
+// Added for the economy rebalance.
+//
+// Two separate problems made old saves load with impossible numbers:
+//
+//   1. The production curves were exponential. Renewals multiplied output by
+//      2^renewals, cross-zone supply links by 1.5^level, and so on. Those are
+//      fixed in the economy itself, but a save still carries the RESOURCES
+//      those curves produced — a balance of 1.7e36 does not go away just
+//      because the rate that produced it has been corrected.
+//
+//   2. Twenty-two upgrade fields still feed the production formulas but no
+//      longer have any purchase path anywhere in the game. They can only be
+//      non-zero in a save written by an older build. A returning player was
+//      therefore carrying permanent multipliers that no new player can earn,
+//      and those multipliers were among the largest in the stack.
+//
+// So a save from before this build is read, repaired and reported on, and the
+// player is told plainly what happened rather than being dropped into a city
+// whose numbers make no sense.
+// =============================================
+
+// Raise this whenever a change makes old numbers wrong rather than just
+// incomplete. normalizeExpansion handles additive changes on its own.
+const SAVE_VERSION = 4;
+
+// Fields that still multiply production but can no longer be bought. Grouped
+// by the object they live on. `clamp: 0` means "no current player can have
+// this, so neither can a returning one"; a number means "keep it, but no more
+// than the live equivalent allows".
+const UNREACHABLE_ECONOMY_FIELDS = {
+    // fastHands and autoClicker are inert in this build: population was removed
+    // from gather power and the auto-click term folded into Auto Harvester, so
+    // neither field is read by any formula. Cleared to 0 rather than left at a
+    // non-zero "allowed" value that implies they still do something.
+    rebirthUpgrades: { legacy: 0, fastHands: 0, autoClicker: 0 },
+    stage2Upgrades: { deepSalvage: 0 },
+    stage2ResetUpgrades: { survivorSpeed2: 0 },
+    stage3Upgrades: { salvageBoost3: 0 },
+    stage3ResetUpgrades: { salvageBoost3b: 0, assemblySpeed2: 0 },
+    stage4Upgrades: { salvageBoost4: 0 },
+    stage4ResetUpgrades: { salvageBoost4b: 0 },
+    stage5Upgrades: { totalSalvage: 0, ascension: 0 },
+    stage5ResetUpgrades: { salvageBoost5: 0, ascensionLegacy: 0 }
+};
+
+// Automation flags are deliberately NOT in that list. They are conveniences
+// rather than multipliers, and taking automation away from a returning player
+// to fix a number problem would be a worse bug than the one being fixed.
+
+const CURRENCY_FIELDS = ["salvage", "scrap", "parts", "circuits", "cores"];
+const TOKEN_FIELDS = ["shards", "scrapTokens", "partTokens", "networkTokens", "ascensionTokens"];
+
+// A balance this large cannot be produced by the rebalanced curves in any
+// reasonable amount of play, so it is the signal that a save predates them.
+const INFLATED_BALANCE = 1e9;
+const INFLATED_LIFETIME = 1e12;
+
+function saveVersionOf(loaded) {
+    return expInt(loaded?.saveVersion, 0, 0, 1000);
+}
+
+// Read-only: what is wrong with this save, if anything.
+function inspectSave(loaded) {
+    const report = { version: saveVersionOf(loaded), current: SAVE_VERSION, inflated: false, unreachable: [], reasons: [] };
+    if (!loaded || typeof loaded !== "object") return report;
+
+    for (const [group, fields] of Object.entries(UNREACHABLE_ECONOMY_FIELDS)) {
+        for (const [field, allowed] of Object.entries(fields)) {
+            const value = Number(loaded?.[group]?.[field]) || 0;
+            if (value > allowed) report.unreachable.push(group + "." + field + " = " + value);
+        }
+    }
+
+    for (const field of CURRENCY_FIELDS) {
+        const value = Number(loaded[field]) || 0;
+        if (value > INFLATED_BALANCE) {
+            report.inflated = true;
+            report.reasons.push(field + " = " + value.toExponential(2));
+        }
+    }
+    if ((Number(loaded.lifetimeSalvage) || 0) > INFLATED_LIFETIME) {
+        report.inflated = true;
+        report.reasons.push("lifetime Salvage = " + (Number(loaded.lifetimeSalvage) || 0).toExponential(2));
+    }
+    return report;
+}
+
+// Repairs a parsed save IN PLACE and returns a human-readable report. Safe to
+// call on a save that needs nothing: it then reports no changes.
+function migrateSaveEconomy(loaded) {
+    const report = inspectSave(loaded);
+    report.changed = [];
+    if (!loaded || typeof loaded !== "object") return report;
+    if (report.version >= SAVE_VERSION) return report;        // already current
+
+    // --- 1. upgrades that no longer exist -------------------------------
+    let cleared = 0;
+    for (const [group, fields] of Object.entries(UNREACHABLE_ECONOMY_FIELDS)) {
+        if (!loaded[group] || typeof loaded[group] !== "object") continue;
+        for (const [field, allowed] of Object.entries(fields)) {
+            const value = Number(loaded[group][field]) || 0;
+            if (value > allowed) { loaded[group][field] = allowed; cleared++; }
+        }
+    }
+    if (cleared) report.changed.push(cleared + " retired upgrade" + (cleared === 1 ? "" : "s") + " reset to what this build can grant");
+
+    // --- 2. legacy multipliers carried from much older builds -----------
+    const economy = loaded.economy;
+    if (economy && typeof economy === "object") {
+        let trimmed = 0;
+        // These two exist only to compensate for an upgrade rescale in a much
+        // older build: they multiply production to make previously-bought
+        // levels "worth what they were". The rebalanced curves already pay for
+        // every level the save still holds, so keeping the compensation on top
+        // credits the same purchases twice - and it was worth x3 on production
+        // and +255% on synergy in the tester's save. A save being normalized
+        // has its production recalculated by the current formulas alone.
+        if (economy.legacyUpgradeMultipliers && typeof economy.legacyUpgradeMultipliers === "object") {
+            for (const [key, raw] of Object.entries(economy.legacyUpgradeMultipliers)) {
+                if ((Number(raw) || 1) > 1) { economy.legacyUpgradeMultipliers[key] = 1; trimmed++; }
+            }
+        }
+        if ((Number(economy.legacyProduction) || 1) > 1) { economy.legacyProduction = 1; trimmed++; }
+        if (trimmed) report.changed.push("production recalculated with the current formulas instead of the old conversion factors");
+
+        // A save already converted to economy version 3 has the old
+        // double-counted, old-scale credit baked into legacyOutput, so
+        // migrateEconomy cannot recompute it. Bring it down to what this
+        // save's retired buildings justify at the current scale. Never raised,
+        // so a legitimate save is left exactly as it was.
+        if (typeof expectedLegacyOutput === "function") {
+            const stored = Number(economy.legacyOutput);
+            const allowed = expectedLegacyOutput(loaded);
+            if (Number.isFinite(stored) && Number.isFinite(allowed) && stored > allowed + 1) {
+                economy.legacyOutput = Math.max(0, allowed);
+                report.changed.push("retired-building income recredited at this build's production scale");
+            }
+        }
+    }
+
+    // --- 2b. buildings above what this build allows ---------------------
+    // A count past a building's own maximum is not progression, it is a value
+    // this build cannot produce. Clamping it is what "convert to equivalent
+    // current progression" means for a building line.
+    if (typeof BUILDINGS === "object" && loaded.buildings && typeof loaded.buildings === "object") {
+        let clamped = 0;
+        for (const [key, def] of Object.entries(BUILDINGS)) {
+            if (!Number.isFinite(def.max)) continue;
+            const owned = Number(loaded.buildings[key]) || 0;
+            if (owned > def.max) { loaded.buildings[key] = def.max; clamped++; }
+        }
+        if (clamped) {
+            report.changed.push(clamped + " building line" + (clamped === 1 ? "" : "s") +
+                " reduced to this build's maximum");
+        }
+    }
+
+    // --- 2b-ii. zone infrastructure above its maximum --------------------
+    // Zone buildings live under adventure.progression.infrastructure rather
+    // than in `buildings`, so the clamp above never saw them. An old save with
+    // 90 Depot Camps against a maximum of 25 produced enough Scrap to hit the
+    // corrupt-value safety net.
+    if (typeof INFRASTRUCTURE === "object") {
+        const infra = loaded.adventure?.progression?.infrastructure;
+        if (infra && typeof infra === "object") {
+            let clamped = 0;
+            for (const defs of Object.values(INFRASTRUCTURE)) {
+                for (const [key, def] of Object.entries(defs)) {
+                    const level = Number(infra[key]) || 0;
+                    if (Number.isFinite(def.max) && level > def.max) { infra[key] = def.max; clamped++; }
+                }
+            }
+            if (clamped) {
+                report.changed.push(clamped + " zone building line" + (clamped === 1 ? "" : "s") +
+                    " reduced to this build's maximum");
+            }
+        }
+    }
+
+    // --- 2c. upgrade levels above what this build sells ------------------
+    if (typeof UPGRADE_CURVES === "object") {
+        let clamped = 0;
+        for (const [key, curve] of Object.entries(UPGRADE_CURVES)) {
+            const table = curve.stage === 1 ? loaded.cityTech : loaded["stage" + curve.stage + "Upgrades"];
+            if (!table || typeof table !== "object") continue;
+            const level = Number(table[key]) || 0;
+            if (level > curve.max) { table[key] = curve.max; clamped++; }
+        }
+        for (const [stage, table] of [[1, typeof TECH_UPGRADES === "object" ? TECH_UPGRADES : null],
+                                      [2, typeof STAGE2_UPGRADES === "object" ? STAGE2_UPGRADES : null],
+                                      [3, typeof STAGE3_UPGRADES === "object" ? STAGE3_UPGRADES : null],
+                                      [4, typeof STAGE4_UPGRADES === "object" ? STAGE4_UPGRADES : null],
+                                      [5, typeof STAGE5_UPGRADES === "object" ? STAGE5_UPGRADES : null]]) {
+            if (!table) continue;
+            const state = stage === 1 ? loaded.cityTech : loaded["stage" + stage + "Upgrades"];
+            if (!state || typeof state !== "object") continue;
+            for (const [key, def] of Object.entries(table)) {
+                if (!Number.isFinite(def.max)) continue;
+                const level = Number(state[key]) || 0;
+                if (level > def.max) { state[key] = def.max; clamped++; }
+            }
+        }
+        if (clamped) report.changed.push(clamped + " upgrade" + (clamped === 1 ? "" : "s") + " reduced to its current maximum");
+    }
+
+    // --- 3. balances the old curves produced ----------------------------
+    // Only touched when they are genuinely impossible. An ordinary save keeps
+    // every resource it had.
+    if (report.inflated) {
+        for (const field of CURRENCY_FIELDS) {
+            const value = Number(loaded[field]) || 0;
+            if (value > INFLATED_BALANCE) loaded[field] = INFLATED_BALANCE;
+        }
+        for (const field of TOKEN_FIELDS) {
+            const value = Number(loaded[field]) || 0;
+            if (value > 1e6) loaded[field] = 1e6;
+        }
+        const lifetime = Number(loaded.lifetimeSalvage) || 0;
+        if (lifetime > INFLATED_LIFETIME) loaded.lifetimeSalvage = INFLATED_LIFETIME;
+        const total = Number(loaded.totalSalvage) || 0;
+        if (total > INFLATED_LIFETIME) loaded.totalSalvage = INFLATED_LIFETIME;
+        const best = Number(loaded.highestSalvageRate) || 0;
+        if (best > INFLATED_BALANCE) loaded.highestSalvageRate = INFLATED_BALANCE;
+        report.changed.push("recalibrated balances that the old curves had inflated");
+    }
+
+    // Everything the player actually achieved is deliberately untouched:
+    // rebirths, stage unlocks, buildings, achievements, contracts, glyphs,
+    // pets, research, story progress and city layout all survive.
+    loaded.saveVersion = SAVE_VERSION;
+    return report;
+}
+
+// ---------------------------------------------------------------
+// Guest save slots
+//
+// Every guest on a browser used to share one key, so the next person to open
+// the game inherited the previous guest's city. The live slot keeps its
+// original name (so an existing guest keeps their city on upgrade) and
+// starting a new guest game moves the old one aside rather than destroying it.
+// ---------------------------------------------------------------
+
+const GUEST_SAVE_KEY = "lastCitySaveV2";
+const GUEST_ARCHIVE_KEY = "lastCitySaveV2:guest-previous";
+
+function readRawSave(key) {
+    try { return window.localStorage.getItem(key); } catch (_) { return null; }
+}
+
+function guestSaveExists() {
+    const raw = readRawSave(GUEST_SAVE_KEY);
+    if (!raw) return false;
+    try { const parsed = JSON.parse(raw); return !!parsed && typeof parsed === "object"; }
+    catch (_) { return false; }
+}
+
+// A one-line description of the stored guest city, for the start screen.
+function guestSaveSummary() {
+    const raw = readRawSave(GUEST_SAVE_KEY);
+    if (!raw) return null;
+    try {
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object") return null;
+        const stage = [5, 4, 3, 2, 1].find(n => n === 1 || parsed["stage" + n + "Unlocked"]) || 1;
+        return {
+            rebirths: expInt(parsed.rebirths, 0, 0, 1e9),
+            stage,
+            playTimeSeconds: expInt(parsed.playTimeSeconds, 0, 0, 1e9),
+            version: saveVersionOf(parsed)
+        };
+    } catch (_) { return null; }
+}
+
+// Moves the current guest city aside and clears the live slot. Returns true if
+// there was anything to archive.
+function archiveGuestSave() {
+    const raw = readRawSave(GUEST_SAVE_KEY);
+    try {
+        if (raw) window.localStorage.setItem(GUEST_ARCHIVE_KEY, raw);
+        window.localStorage.removeItem(GUEST_SAVE_KEY);
+    } catch (_) { return false; }
+    return !!raw;
+}
+
+if (typeof module !== "undefined" && module.exports) {
+    module.exports.SAVE_VERSION = SAVE_VERSION;
+    module.exports.UNREACHABLE_ECONOMY_FIELDS = UNREACHABLE_ECONOMY_FIELDS;
+    module.exports.inspectSave = inspectSave;
+    module.exports.migrateSaveEconomy = migrateSaveEconomy;
+    module.exports.saveVersionOf = saveVersionOf;
+    module.exports.INFLATED_BALANCE = INFLATED_BALANCE;
+}
+
+// ---------------------------------------------------------------
+// Onboarding state
+//
+// Lives here rather than in onboarding.js because loadGame() runs while
+// game.js is still being parsed, before the UI scripts have loaded.
+//
+// Spreading defaultGame would hand every save the SAME onboarding object,
+// which both hides the tutorial decision below and lets one city's progress
+// leak into the next load through a shared reference.
+// ---------------------------------------------------------------
+const TUTORIAL_STEP_COUNT = 7;
+
+function normalizeOnboarding(saved, loaded = {}) {
+    if (saved && typeof saved === "object") {
+        const step = Number(saved.step);
+        return {
+            version: Number(saved.version) || 1,
+            step: Number.isFinite(step) && step >= 0 ? Math.min(Math.floor(step), TUTORIAL_STEP_COUNT) : 0,
+            done: saved.done === true,
+            revealed: saved.revealed && typeof saved.revealed === "object" ? { ...saved.revealed } : {}
+        };
+    }
+    // No onboarding block at all: either a brand-new city, which gets the
+    // tutorial, or a save from before the tutorial existed, whose owner
+    // already knows how to play and gets the ? guide instead.
+    const experienced = (Number(loaded.rebirths) || 0) > 0
+        || (Number(loaded.buildings?.workshop) || 0) > 0
+        || (Number(loaded.totalSalvage) || 0) >= 5000
+        || loaded.stage2Unlocked === true;
+    return {
+        version: 1,
+        step: experienced ? TUTORIAL_STEP_COUNT : 0,
+        done: !!experienced,
+        revealed: {}
+    };
+}
+
+// ---------------------------------------------------------------
+// Balance normalization
+//
+// Field-level repair above removes what this build cannot grant. This second
+// pass runs AFTER the live game object exists, so it can ask the current
+// formulas what this city actually produces now - and bring the stored
+// balances into line with that answer.
+//
+// The principle: a returning player keeps their city and their progress, and
+// comes back with a sensible amount of income banked, not a number the old
+// curves happened to reach. Ten minutes of current production is generous
+// without being a free pass through content they have not played.
+// ---------------------------------------------------------------
+const NORMALIZE_SECONDS = 600;
+const NORMALIZE_FLOOR = 1000;
+
+function normalizedCeiling(ratePerSecond) {
+    const rate = Number.isFinite(ratePerSecond) && ratePerSecond > 0 ? ratePerSecond : 0;
+    return Math.max(NORMALIZE_FLOOR, rate * NORMALIZE_SECONDS);
+}
+
+// Called once, after loadGame has built `game`. Returns a list of plain
+// sentences describing what it changed, for the recovery notice.
+function normalizeEconomyBalances() {
+    const changes = [];
+    const pairs = [
+        ["salvage", typeof getSalvagePerSecond === "function" ? getSalvagePerSecond : null],
+        ["scrap", typeof getScrapPerSecond === "function" ? getScrapPerSecond : null],
+        ["parts", typeof getPartsPerSecond === "function" ? getPartsPerSecond : null],
+        ["circuits", typeof getCircuitsPerSecond === "function" ? getCircuitsPerSecond : null],
+        ["cores", typeof getCoresPerSecond === "function" ? getCoresPerSecond : null]
+    ];
+    let trimmed = 0;
+    for (const [field, rateFn] of pairs) {
+        if (!rateFn) continue;
+        let rate = 0;
+        try { rate = rateFn(); } catch (_) { rate = 0; }
+        const ceiling = normalizedCeiling(rate);
+        const held = Number(game[field]) || 0;
+        if (held > ceiling) { game[field] = ceiling; trimmed++; }
+    }
+    if (trimmed) {
+        changes.push("balances rebuilt from what your city produces now (about " +
+            (NORMALIZE_SECONDS / 60) + " minutes of income banked)");
+    }
+
+    // Lifetime and run totals are history, not spendable, but a 1e36 lifetime
+    // figure makes every statistic and contract meaningless.
+    let rate = 0;
+    try { rate = typeof getSalvagePerSecond === "function" ? getSalvagePerSecond() : 0; } catch (_) { rate = 0; }
+    const lifetimeCeiling = Math.max(NORMALIZE_FLOOR, rate * NORMALIZE_SECONDS * 50);
+    for (const field of ["totalSalvage", "lifetimeSalvage"]) {
+        const held = Number(game[field]) || 0;
+        if (held > lifetimeCeiling) { game[field] = lifetimeCeiling; changes.push("recalculated " + field.replace(/([A-Z])/g, " $1").toLowerCase()); }
+    }
+    const best = Number(game.highestSalvageRate) || 0;
+    if (best > rate * 2) { game.highestSalvageRate = rate; changes.push("reset the best-rate record to this city's real output"); }
+
+    return changes;
+}

@@ -3,16 +3,16 @@ const LEGACY_BUILDINGS = { yard: 1.5, farm: 25, factory: 180, well: .6, clinic: 
 // Levels 1–4 add tangible units, 5–10 bridge to percentages, 11+ compound.
 // Prices use these fixed reference values, never the player's live earnings.
 const UPGRADE_CURVES = {
-    sturdyGloves: { stage: 1, base: 1, flat: 1, compound: 1.35, oldScale: 1.35, max: 40 },
-    salvageAccelerator: { stage: 1, base: 1, flat: 1, compound: 1.3, oldScale: 1.3, max: 40 },
-    scrapRate: { stage: 2, base: 1, flat: 1, compound: 1.35, oldScale: 1.35, max: 40 },
-    survivorSpeed: { stage: 2, base: 10, flat: 2, compound: 1.4, oldScale: 1.4, max: 30 },
-    partRate: { stage: 3, base: 1, flat: 1, compound: 1.35, oldScale: 1.35, max: 40 },
-    assemblySpeed: { stage: 3, base: 12, flat: 3, compound: 1.4, oldScale: 1.4, max: 30 },
-    circuitRate: { stage: 4, base: 1, flat: 1, compound: 1.35, oldScale: 1.35, max: 40 },
-    fieldPower: { stage: 4, base: 5, flat: 1, compound: 1.4, oldScale: 1.4, max: 30 },
-    coreRate: { stage: 5, base: 1, flat: 1, compound: 1.35, oldScale: 1.35, max: 40 },
-    reactorFocus: { stage: 5, base: 4, flat: 1, compound: 1.4, oldScale: 1.4, max: 30 }
+    sturdyGloves: { stage: 1, base: 1, flat: 1, compound: 1.12, priceCompound: 1.5, oldScale: 1.35, max: 40 },
+    salvageAccelerator: { stage: 1, base: 1, flat: 1, compound: 1.12, priceCompound: 1.5, oldScale: 1.3, max: 40 },
+    scrapRate: { stage: 2, base: 1, flat: 1, compound: 1.12, priceCompound: 1.5, oldScale: 1.35, max: 40 },
+    survivorSpeed: { stage: 2, base: 10, flat: 2, compound: 1.14, priceCompound: 1.55, oldScale: 1.4, max: 30 },
+    partRate: { stage: 3, base: 1, flat: 1, compound: 1.12, priceCompound: 1.5, oldScale: 1.35, max: 40 },
+    assemblySpeed: { stage: 3, base: 12, flat: 3, compound: 1.14, priceCompound: 1.55, oldScale: 1.4, max: 30 },
+    circuitRate: { stage: 4, base: 1, flat: 1, compound: 1.12, priceCompound: 1.5, oldScale: 1.35, max: 40 },
+    fieldPower: { stage: 4, base: 5, flat: 1, compound: 1.14, priceCompound: 1.55, oldScale: 1.4, max: 30 },
+    coreRate: { stage: 5, base: 1, flat: 1, compound: 1.12, priceCompound: 1.5, oldScale: 1.35, max: 40 },
+    reactorFocus: { stage: 5, base: 4, flat: 1, compound: 1.14, priceCompound: 1.55, oldScale: 1.4, max: 30 }
 };
 function curveLevel(key, level) { return Math.min(UPGRADE_CURVES[key].max, Math.max(0, Math.floor(Number(level) || 0))); }
 function upgradeLevel(key) {
@@ -44,17 +44,37 @@ function normalizeEconomy(saved = {}) {
     const legacyFlatLevels = Object.fromEntries(Object.keys(UPGRADE_CURVES).map(key => [key, Math.min(4, Math.floor(finite(saved?.legacyFlatLevels?.[key], 0)))]));
     return { version: 3, legacyOutput: finite(saved?.legacyOutput, 0), legacyPopulation: finite(saved?.legacyPopulation, 0), legacyProduction: Math.max(1, finite(saved?.legacyProduction, 1)), legacyUpgradeMultipliers, legacyFlatLevels };
 }
+// Retired buildings are credited at the CURRENT production scale.
+//
+// The rates in LEGACY_BUILDINGS were written against a build whose City Center
+// produced 1,120 Salvage/sec; this build's produces 80. Crediting retired
+// assets at the old rates imported that build's inflation wholesale: a save
+// with 14 old Factories was handed 2,520 base Salvage/sec, while a Workshop
+// bought today gives 8. Scaling by the ratio between the two City Center rates
+// keeps the retired assets worth owning without carrying the old scale in.
+const LEGACY_OUTPUT_OLD_CITYCENTER = 1120;
+function legacyOutputScale() {
+    const current = Number(BUILDINGS?.citycenter?.output);
+    if (!Number.isFinite(current) || current <= 0) return 1;
+    return current / LEGACY_OUTPUT_OLD_CITYCENTER;
+}
+// The most base output a save's RETIRED buildings can justify. Workshops and
+// City Centers are deliberately excluded: both still exist and are already
+// counted live in getSalvagePerSecond, so crediting them here as well paid a
+// returning player twice for the same buildings, at the old rate.
+function expectedLegacyOutput(loaded) {
+    let total = 0;
+    for (const [key, output] of Object.entries(LEGACY_BUILDINGS)) {
+        const owned = Number(loaded?.buildings?.[key]);
+        if (Number.isFinite(owned) && owned > 0) total += owned * output;
+    }
+    return total * legacyOutputScale();
+}
 function migrateEconomy(loaded) {
     if (loaded.economy?.version === 3) return normalizeEconomy(loaded.economy);
     const result = normalizeEconomy(loaded.economy?.version === 2 ? loaded.economy : {});
     if (loaded.economy?.version !== 2) {
-        for (const [key, output] of Object.entries(LEGACY_BUILDINGS)) {
-            const owned = loaded.buildings?.[key];
-            if (Number.isFinite(owned) && owned > 0) result.legacyOutput += owned * output;
-        }
-        // Keep the already-paid output of older Workshop/City Center purchases.
-        result.legacyOutput += Math.max(0, Number(loaded.buildings?.workshop) || 0) * 4
-            + Math.max(0, Number(loaded.buildings?.citycenter) || 0) * 1120;
+        result.legacyOutput += expectedLegacyOutput(loaded);
         result.legacyPopulation = Math.max(0, Number(loaded.buildings?.farm) || 0) * 2;
         const drive = Math.min(3, Math.max(0, Number(loaded.cityTech?.salvageAccelerator) || 0));
         result.legacyProduction = Math.pow(2 / 1.3, drive);
@@ -74,12 +94,37 @@ function migrateEconomy(loaded) {
 function economyUpgradeCost(def, level = 0) {
     if (UPGRADE_CURVES[def.curve]) {
         const curve = UPGRADE_CURVES[def.curve];
-        const benchmark = (curve.base + curveFlatBonus(def.curve, level)) * curveMultiplier(def.curve, level) / curve.base;
+        // Prices keep their original curve (priceCompound) while POWER now uses
+        // the gentler `compound`. Tying the two together would have made late
+        // upgrades both weaker and cheaper, which reads as the game breaking.
+        const n = curveLevel(def.curve, level);
+        const priceShape = (1 + .2 * Math.min(6, Math.max(0, n - 4))) *
+            Math.pow(curve.priceCompound ?? curve.compound, Math.max(0, n - 10));
+        const benchmark = (curve.base + curveFlatBonus(def.curve, level)) * priceShape / curve.base;
         return Math.ceil((def.baseCost ?? def.cost) * benchmark);
     }
     return Math.ceil((def.baseCost ?? def.cost) * Math.pow(def.growth ?? 1.65, level));
 }
-function stageResetMultiplier(stage) { return Math.min(1e100, Math.pow(stage === 1 ? 2 : 1.5, stage === 1 ? game.rebirths : game['stage' + stage + 'Resets'])); }
+// Renewal reward curve.
+//
+// This used to be Math.pow(2, rebirths) for the City and Math.pow(1.5, resets)
+// for every other zone. Doubling per renewal is the single biggest cause of
+// the Salvage explosion: 25 renewals multiplied production by 33 million, and
+// 40 by a million million. It is replaced with a linear curve, so a renewal is
+// still clearly worth doing and the tenth renewal is worth the same as the
+// first, instead of being worth more than the previous nine put together.
+const RENEWAL_STEP = { city: 0.5, zone: 0.35 };
+function stageResetMultiplier(stage) {
+    const raw = stage === 1 ? game.rebirths : game['stage' + stage + 'Resets'];
+    const count = Math.max(0, Math.min(10000, Math.floor(Number(raw) || 0)));
+    return 1 + count * (stage === 1 ? RENEWAL_STEP.city : RENEWAL_STEP.zone);
+}
+// What the renewal multiplier becomes after one more renewal. Every preview in
+// the interface derives from this, so the projection can never drift from the
+// curve the economy actually uses.
+function nextStageResetMultiplier(stage) {
+    return stageResetMultiplier(stage) + (stage === 1 ? RENEWAL_STEP.city : RENEWAL_STEP.zone);
+}
 function stageRateKey(stage) { return { 2: 'scrapRate', 3: 'partRate', 4: 'circuitRate', 5: 'coreRate' }[stage]; }
 function stageAutomationOwned(stage) {
     return stage === 2 ? game.stage2Upgrades.scrapStorage > 0 || game.stage2ResetUpgrades.autoScavenge > 0
@@ -87,24 +132,57 @@ function stageAutomationOwned(stage) {
         : stage === 4 ? game.stage4Upgrades.autoNetwork > 0 || game.stage4ResetUpgrades.autoNetwork2 > 0 || infrastructureLevel('collectionDrone') > 0
         : stage === 5 ? game.stage5Upgrades.autoCore > 0 || game.stage5ResetUpgrades.autoAscension > 0 : game.cityTech.salvageMagnet > 0;
 }
+// Was Math.pow(1.25, level) with 20 levels (x87 on its own). Additive now.
+const LOCAL_INCOME_STEP = 0.12;
 function simulatorStageMultiplier(stage) {
     const permanent = game['stage' + stage + 'ResetUpgrades'];
     const income = { 2: 'scrapIncome', 3: 'partIncome', 4: 'circuitIncome', 5: 'coreIncome' }[stage];
-    return Math.pow(1.25, permanent[income]) * stageResetMultiplier(stage);
+    const level = Math.max(0, Number(permanent[income]) || 0);
+    return (1 + level * LOCAL_INCOME_STEP) * stageResetMultiplier(stage);
 }
+// Supply links: what a later zone sends back to the one before it.
+//
+// These were Math.pow(1.5, n) and Math.pow(1.4, n) with 20 levels each, so a
+// maxed pair multiplied the earlier zone by 2.8 million on its own. They are
+// now additive, which keeps the "later zones make earlier ones matter" design
+// intact (a maxed pair is still a healthy x13.6) without compounding.
+const SUPPLY_LINK_STEP = 0.12, SUPPLY_LEGACY_STEP = 0.15;
 function previousStageMultiplier(stage) {
     const next = stage + 1;
     if (!isZoneUnlocked(next)) return 1;
     const key = { 1: 'salvageBoost', 2: 'scrapBoost', 3: 'partBoost', 4: 'totalCircuit' }[stage];
     const permanent = { 1: 'salvageBoost2', 2: 'scrapBoost3', 3: 'partBoost4', 4: 'circuitBoost' }[stage];
-    return Math.pow(1.5, game['stage' + next + 'Upgrades'][key]) * Math.pow(1.4, game['stage' + next + 'ResetUpgrades'][permanent]);
+    const live = Math.max(0, Number(game['stage' + next + 'Upgrades'][key]) || 0);
+    const kept = Math.max(0, Number(game['stage' + next + 'ResetUpgrades'][permanent]) || 0);
+    // Added, not multiplied. The two are both "supply from the next zone",
+    // so compounding them against each other was double-counting one idea.
+    return 1 + live * SUPPLY_LINK_STEP + kept * SUPPLY_LEGACY_STEP;
 }
 function stageResetReward(stage) {
     const level = game['stage' + stage + 'Upgrades'][stageRateKey(stage)];
     return 3 + Math.floor(Math.max(0, level - 3) / 3);
 }
-function cannonCost() { return [100, 200, 400, 800][Math.min(3, Math.floor((100 - game.adventure.bossHealth) / 25))]; }
-function coreChannelReward(level = game.stage5Upgrades.reactorFocus) { return upgradeAmount('reactorFocus', 4, level) * getCompanionMultiplier(5) * getGlyphMultiplier(5) * stageResetMultiplier(5) * feedbackResourceMultiplier(); }
+// The Guardian is the game's final objective, so it is priced against the
+// Citadel's own output rather than against a flat number. The old costs -
+// 100, 200, 400, 800 Cores - were set when a Citadel made a few Cores a
+// second; a built-out Citadel makes millions, so the whole fight resolved in
+// about three seconds. Each shot now costs a share of a minute's production,
+// escalating, with the original numbers as the floor for a player who gets
+// here early.
+const CANNON_SECONDS = [45, 90, 180, 360];
+const CANNON_FLOOR = [100, 200, 400, 800];
+function cannonCost() {
+    const shot = Math.min(3, Math.floor((100 - game.adventure.bossHealth) / 25));
+    let rate = 0;
+    try { rate = typeof getCoresPerSecond === "function" ? getCoresPerSecond() : 0; } catch (_) { rate = 0; }
+    if (!Number.isFinite(rate) || rate < 0) rate = 0;
+    return Math.ceil(Math.max(CANNON_FLOOR[shot], rate * CANNON_SECONDS[shot]));
+}
+// The same five groups as passive Core income.
+function coreChannelReward(level = game.stage5Upgrades.reactorFocus) {
+    return upgradeAmount('reactorFocus', 4, level)
+        * renewalGroup(5) * synergyGroup(5) * companionGroup(5) * eventGroup(5);
+}
 let lastSimulatorSearch = 0, lastCoreChannel = 0;
 function runSimulatorAutomation(now = Date.now()) {
     if (!gameStarted || document.hidden || window.LastCityCloud?.isSwitching?.() || el("accountModal")?.open) return;

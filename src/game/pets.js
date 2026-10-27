@@ -11,8 +11,8 @@ function petInfo(id) {
     const match = typeof id === "string" && /^([1-5])-([0-4])(-gold)?$/.exec(id);
     if (!match) return null;
     const stage = Number(match[1]), rarity = Number(match[2]), gold = !!match[3];
-    const [name, icon] = ZONE_PETS[stage][rarity];
-    return { stage, rarity, gold, name: (gold ? "Gold " : "") + name, icon, baseId: stage + "-" + rarity };
+    const [name, icon, story] = ZONE_PETS[stage][rarity];
+    return { stage, rarity, gold, name: (gold ? "Gold " : "") + name, icon, story: story || "", baseId: stage + "-" + rarity };
 }
 function petBasePower(id) {
     const pet = petInfo(id);
@@ -100,17 +100,17 @@ function petInventoryMarkup(stage) {
             && (inventoryKind === "all" || (inventoryKind === "gold") === pet.gold);
     }).sort(([a], [b]) => petBasePower(b) - petBasePower(a));
     const total = Object.values(game.adventure.collection).reduce((sum, count) => sum + count, 0);
-    return `<div class="inventory-heading"><h3>Pet inventory</h3><span>${total} pets owned</span></div><div class="inventory-filters" aria-label="Inventory filters">` +
+    return `<div class="inventory-heading"><h3>Companion roster</h3><span>${total} companions recovered</span></div><div class="inventory-filters" aria-label="Inventory filters">` +
         [["scope", "zone", "This zone"], ["scope", "all", "All zones"], ["kind", "all", "All pets"], ["kind", "normal", "Normal"], ["kind", "gold", "Gold"]].map(([filter, value, label]) =>
             `<button data-pet-action="filter" data-filter="${filter}" data-value="${value}" aria-pressed="${(filter === "scope" ? inventoryScope : inventoryKind) === value}">${label}</button>`).join("") +
         '</div><p class="activity-tip">Each equipped copy contributes its own power. Extra unequipped copies are merge materials. Gold pets have ×1.25 normal base power.</p><div class="pet-grid inventory-grid">' +
         (entries.length ? entries.map(([id, count]) => {
             const pet = petInfo(id), equipped = equippedCopyCount(pet.stage, id);
             const full = (game.adventure.equipped[pet.stage] || []).length >= 3;
-            return `<article class="pet-card inventory-pet${pet.gold ? " gold-pet" : ""}${equipped ? " equipped-pet" : ""}" style="--rarity:${pet.gold ? "#ffd46a" : RARITIES[pet.rarity].color}"><span class="pet-quantity">×${count}</span>${petArtMarkup(id)}<h3>${pet.name}</h3><small>${RARITIES[pet.rarity].name}${pet.gold ? " · GOLD" : ""} · Zone ${pet.stage}</small><p>+${petPowerText(id)}% ${ZONES[pet.stage].label} per copy</p><small class="pet-copy-count">${equipped} equipped · ${count - equipped} available</small><button data-pet-action="equip" data-id="${id}" ${full || count <= equipped ? "disabled" : ""}>${count <= equipped ? "All copies equipped" : full ? "Slots full" : "Equip 1"}</button>` +
+            return `<article class="pet-card inventory-pet${pet.gold ? " gold-pet" : ""}${equipped ? " equipped-pet" : ""}" style="--rarity:${pet.gold ? "#ffd46a" : RARITIES[pet.rarity].color}"><span class="pet-quantity">×${count}</span>${petArtMarkup(id)}<h3>${pet.name}</h3><small>${RARITIES[pet.rarity].name}${pet.gold ? " · GOLD" : ""} · Zone ${pet.stage}</small><p>+${petPowerText(id)}% ${ZONES[pet.stage].label} per copy</p>${pet.story ? `<p class="pet-story">${pet.story}</p>` : ""}<small class="pet-copy-count">${equipped} equipped · ${count - equipped} available</small><button data-pet-action="equip" data-id="${id}" ${full || count <= equipped ? "disabled" : ""}>${count <= equipped ? "All copies equipped" : full ? "Slots full" : "Equip 1"}</button>` +
                 (equipped ? `<button data-pet-action="unequip" data-id="${id}">Unequip 1</button>` : "") +
                 (!pet.gold ? `<button class="pet-merge-button" data-pet-action="merge" data-id="${id}" ${count < 2 ? "disabled" : ""}>${count < 2 ? "Need 2 copies to merge" : "Merge to Gold"}</button>` : '<span class="gold-label">GOLD · ×1.25 power</span>') + '</article>';
-        }).join("") : '<p class="inventory-empty">No pets match this filter. Hatch an egg to start your collection.</p>') + '</div>';
+        }).join("") : '<p class="inventory-empty">No companions match this filter. Hatch an egg to find your first.</p>') + '</div>';
 }
 function eggShopMarkup(stage) {
     const zone = ZONES[stage], a = game.adventure;
@@ -118,7 +118,7 @@ function eggShopMarkup(stage) {
     return `<div class="egg-controls"><button data-pet-action="hatch" ${activeHatch || autoHatchSession || game[zone.currency] < zone.cost ? "disabled" : ""}>Hatch · ${formatNumber(zone.cost)} ${zone.label}</button><button data-pet-action="auto-hatch" aria-pressed="${!!autoHatchSession}" ${!autoHatchSession && (activeHatch || game[zone.currency] < zone.cost) ? "disabled" : ""}>${autoHatchSession ? "■ Stop Auto Hatch" : "▶ Start Auto Hatch"}</button><button data-pet-action="boost" ${boostTime || game[zone.currency] < zone.boostCost ? "disabled" : ""}>${boostTime ? "×2 Booster · " + boostTime + "s left" : "×2 " + zone.label + " · 60s · " + zone.boostCost + " " + zone.label}</button></div><p class="auto-hatch-status">${autoHatchSession ? "Auto hatch running · " + zone.cost + " " + zone.label + " per egg" : autoHatchMessage}</p><div class="egg-odds">` +
         RARITIES.map(r => `<span style="color:${r.color}">${r.name} ${r.weight}%</span>`).join("") +
         `</div><p class="activity-tip">Guaranteed Rare or better after 9 consecutive Common/Uncommon hatches. Pity: ${a.pity[stage] || 0}/9. Guaranteed odds: Rare 68.18%, Epic 27.27%, Legendary 4.55%. The reel previews possible pets; it does not change these odds.</p><div class="pet-grid egg-pet-list">` +
-        ZONE_PETS[stage].map(([name], rarity) => `<article class="pet-card" style="--rarity:${RARITIES[rarity].color}">${petArtMarkup(stage + "-" + rarity)}<h3>${name}</h3><small>${RARITIES[rarity].name} · ${RARITIES[rarity].weight}%</small><p>+${petPowerText(stage + "-" + rarity)}% ${zone.label}</p><small>${a.collection[stage + "-" + rarity] || 0} owned</small></article>`).join("") + '</div>';
+        ZONE_PETS[stage].map(([name, , story], rarity) => `<article class="pet-card" style="--rarity:${RARITIES[rarity].color}">${petArtMarkup(stage + "-" + rarity)}<h3>${name}</h3><small>${RARITIES[rarity].name} · ${RARITIES[rarity].weight}%</small><p>+${petPowerText(stage + "-" + rarity)}% ${zone.label}</p>${story ? `<p class="pet-story">${story}</p>` : ""}<small>${a.collection[stage + "-" + rarity] || 0} owned</small></article>`).join("") + '</div>';
 }
 function companionContentMarkup(stage) {
     const zone = ZONES[stage];

@@ -7,11 +7,11 @@ const ADVENTURE_DEFAULTS = {
     progression: normalizeProgression()
 };
 const ZONES = {
-    1: { name: "Ashfall Outpost", currency: "salvage", label: "Salvage", icon: "🏕️", egg: "Ember Egg", cost: 150, boostCost: 300, lore: "A signal tower rises above the ruins. Rebuild its power, antenna and signal modules to reach the survivors.", quest: "Build 4 City Centers and restore all 3 beacon modules.", next: "The Settlement" },
-    2: { name: "Overgrown Depot", currency: "scrap", label: "Scrap", icon: "🌿", egg: "Moss Egg", cost: 70, boostCost: 150, lore: "Nature has claimed the old rail yard. Equip your expedition crew and establish a depot before opening the gate.", quest: "Recover 5 keys, build Depot Camp Lv 2, then spend 500 Scrap to open the gate.", next: "The Industry" },
-    3: { name: "Copperworks Foundry", currency: "parts", label: "Parts", icon: "🏭", egg: "Clockwork Egg", cost: 100, boostCost: 250, lore: "New engine orders arrive in batches. Upgrade the production line, assemble each recipe and send supplies to the relay.", quest: "Deliver 18 engines, build Assembly Line Lv 2, then fund the gate with 800 Parts.", next: "The Network" },
-    4: { name: "Neon Relay", currency: "circuits", label: "Circuits", icon: "🌐", egg: "Prism Egg", cost: 150, boostCost: 250, lore: "Energy drifts through the neon district. Harvest it to build collectors, capacitors and the three relay towers.", quest: "Collect 80 energy pickups and build 3 Relay Towers.", next: "The Ascension" },
-    5: { name: "Celestial Citadel", currency: "cores", label: "Cores", icon: "🌌", egg: "Astral Egg", cost: 180, boostCost: 250, lore: "The Citadel's guardian blocks the final reactor. Break its shields and reclaim humanity's future.", quest: "Disable all 3 shields, then fire the reactor cannon. Defeat the Guardian.", next: "Guardian defeated" }
+    1: { name: "Ashfall Outpost", currency: "salvage", label: "Salvage", icon: "🏕️", egg: "Ember Egg", cost: 150, boostCost: 300, lore: "A signal tower rises above the ruins. Rebuild its power, antenna and signal modules to reach the survivors.", quest: "Build 4 City Centers and restore all 3 beacon modules.", next: "the Depot", theme: "Survival and first reconstruction", purpose: "Rebuild the first functioning settlement." },
+    2: { name: "Overgrown Depot", currency: "scrap", label: "Scrap", icon: "🌿", egg: "Moss Egg", cost: 70, boostCost: 150, lore: "Nature has claimed the old rail yard. Equip your expedition crew and establish a depot before opening the gate.", quest: "Recover 5 keys, build Depot Camp Lv 2, then spend 500 Scrap to open the gate.", next: "the Foundry", theme: "Logistics and supply", purpose: "Move resources reliably again." },
+    3: { name: "Copperworks Foundry", currency: "parts", label: "Parts", icon: "🏭", egg: "Clockwork Egg", cost: 100, boostCost: 250, lore: "New engine orders arrive in batches. Upgrade the production line, assemble each recipe and send supplies to the relay.", quest: "Deliver 18 engines, build Assembly Line Lv 2, then fund the gate with 800 Parts.", next: "the Relay", theme: "Industrial production", purpose: "Manufacture instead of scavenge." },
+    4: { name: "Neon Relay", currency: "circuits", label: "Circuits", icon: "🌐", egg: "Prism Egg", cost: 150, boostCost: 250, lore: "Energy drifts through the neon district. Harvest it to build collectors, capacitors and the three relay towers.", quest: "Collect 80 energy pickups and build 3 Relay Towers.", next: "the Citadel", theme: "Communication and automation", purpose: "Reconnect and coordinate the city." },
+    5: { name: "Celestial Citadel", currency: "cores", label: "Cores", icon: "🌌", egg: "Astral Egg", cost: 180, boostCost: 250, lore: "The Citadel's guardian blocks the final reactor. Break its shields and reclaim humanity's future.", quest: "Disable all 3 shields, then fire the reactor cannon. Defeat the Guardian.", next: "Guardian defeated", theme: "Advanced civilisation", purpose: "Finish rebuilding a working civilisation." }
 };
 const RARITIES = [
     { name: "Common", weight: 50, bonus: .08, color: "#a8bac9" },
@@ -20,12 +20,48 @@ const RARITIES = [
     { name: "Epic", weight: 6, bonus: .55, color: "#aa8cff" },
     { name: "Legendary", weight: 1, bonus: 1, color: "#ffc247" }
 ];
+// Companions: name, icon, and the line that says who they are.
+//
+// Each one belongs to the zone it is found in, and reads like it: Ashfall's
+// are survivors' animals scraping by in the ash, the Depot's have grown into
+// the ruins, the Foundry's are machine-touched, the Relay's are half signal,
+// and the Citadel's are barely animals at all any more.
 const ZONE_PETS = {
-    1: [["Ash Mouse", "🐭"], ["Camp Cat", "🐱"], ["Ember Fox", "🦊"], ["Flame Owl", "🦉"], ["Phoenix", "🔥"]],
-    2: [["Moss Snail", "🐌"], ["Depot Rabbit", "🐰"], ["Vine Frog", "🐸"], ["Forest Stag", "🦌"], ["Grove Spirit", "🌳"]],
-    3: [["Bolt Beetle", "🪲"], ["Gear Pup", "🐶"], ["Copper Crab", "🦀"], ["Mecha Wolf", "🐺"], ["Forge Dragon", "🐉"]],
-    4: [["Pixel Bug", "🐛"], ["Relay Bird", "🐦"], ["Neon Jelly", "🪼"], ["Prism Tiger", "🐯"], ["Quantum Dragon", "🐲"]],
-    5: [["Star Moth", "🦋"], ["Moon Cub", "🐻"], ["Comet Whale", "🐳"], ["Nova Lion", "🦁"], ["Cosmic Spirit", "✨"]]
+    1: [
+        ["Ash Mouse", "🐭", "Lives in the wall cavities of the camp and screams when the air turns bad. The crews learned to listen."],
+        ["Camp Cat", "🐱", "Walked in during the first winter, sat down by the fire, and has never once acknowledged that this is anyone's city but hers."],
+        ["Ember Fox", "🦊", "Digs out of collapsed basements the salvage no crew could reach. Comes back singed, every time, and goes straight back in."],
+        ["Flame Owl", "🦉", "Hunts the long ridge at dusk and lands on the beacon mast. Where it lands, the crews mark the map."],
+        ["Phoenix", "🔥", "Seen three times since the fall, always over a district about to be rebuilt. The survivors stopped calling it a coincidence."]
+    ],
+    2: [
+        ["Moss Snail", "🐌", "Grazes the rail yard's green rot. The track it clears stays clear, which is more than the work crews manage."],
+        ["Depot Rabbit", "🐰", "Knows every gap under the depot fence. Scouts follow it in rather than cut the wire and announce themselves."],
+        ["Vine Frog", "🐸", "Calls from the flooded loading pits. Three calls means the water is clean; one means turn around."],
+        ["Forest Stag", "🦌", "Walks the old freight line at dawn and will not step on ground that is about to give way."],
+        ["Grove Spirit", "🌳", "Whatever the Depot became after the forest took it, it has opinions about who gets to walk through."]
+    ],
+    3: [
+        ["Bolt Beetle", "🪲", "Nests in the casting floor's warm slag and eats loose fasteners. The line runs quieter with them in it."],
+        ["Gear Pup", "🐶", "Born in the machine shop and raised on noise. Fetches the exact wrench, every time, and nobody taught it that."],
+        ["Copper Crab", "🦀", "Strips oxide off the cooling pipes for the metal. The Foundry's heat exchangers have never run better."],
+        ["Mecha Wolf", "🐺", "Half of it is original. The other half the Foundry built back, one plate at a time, while it slept through the welding."],
+        ["Forge Dragon", "🐉", "Sleeps in the main crucible. The Foundry does not need to light the furnace on the mornings it is in a good mood."]
+    ],
+    4: [
+        ["Pixel Bug", "🐛", "Crawls the fibre runs and eats packet noise. Lines it has walked come back clean."],
+        ["Relay Bird", "🐦", "Repeats transmissions it overheard years ago, word for word. Two lost crews have been found that way."],
+        ["Neon Jelly", "🪼", "Drifts through the district's standing fields and glows brighter near live current. The engineers use it as a meter."],
+        ["Prism Tiger", "🐯", "Its coat refracts the relay light into something the targeting arrays cannot resolve. It hunts exactly as you would expect."],
+        ["Quantum Dragon", "🐲", "Occupies more than one tower at a time. The Relay's uptime figures stopped making sense the week it arrived."]
+    ],
+    5: [
+        ["Star Moth", "🦋", "Navigates by the Citadel's reactor glow. Swarms of them map the safe corridors in a single night."],
+        ["Moon Cub", "🐻", "Found curled in a cryo bay that had been sealed since before the fall, warm, and entirely unbothered."],
+        ["Comet Whale", "🐳", "Moves through the Citadel's upper vacuum the way the old records say whales moved through water."],
+        ["Nova Lion", "🦁", "Walks ahead of reclamation crews into rooms the Guardian still holds. Nothing in those rooms argues."],
+        ["Cosmic Spirit", "✨", "Arrived with the Citadel and may simply be part of it. It has been patient with humanity so far."]
+    ]
 };
 let adventureUIReady = false;
 let activeHatch = null;
@@ -261,8 +297,12 @@ function zoneAction(stage, action, choice, automatic = false) {
         if (a.bossHealth === 0) {
             a.bossDefeated = true;
             game.ascensionTokens += 15;
-            grantZoneResource(5, 300);
-            celebrateEvent("boss", "Guardian defeated", "+300 Cores · +15 Ascension Tokens · permanent ×2 Core production", "🏆");
+            // 300 Cores was set when a Citadel made a few Cores a second. The
+            // game's final victory should not pay less than a second of the
+            // player's own production, so the prize is two minutes of it.
+            const prize = Math.max(300, Math.ceil(getCoresPerSecond() * 120));
+            grantZoneResource(5, prize);
+            celebrateEvent("boss", "Guardian defeated", "+" + formatNumber(prize) + " Cores · +15 Ascension Tokens · permanent ×2 Core production", "🏆");
         }
     } else return;
     updateGame();
@@ -284,7 +324,7 @@ function renderZone(stage) {
     }
     if(stage===5)activity+='<progress id="channelActionProgress" class="terminal-action-progress" max="100" value="100" aria-label="Reactor channel cooldown"></progress>';
     const completed = stage === 5 ? a.bossDefeated : isZoneUnlocked(stage + 1);
-    mount.innerHTML = '<article class="zone-scene zone-' + stage + '"><div class="zone-scenery" aria-hidden="true"><span>' + zone.icon + '</span><i></i><i></i><i></i></div><div class="zone-content"><p class="eyebrow">ZONE ' + stage + ' · ' + zone.label.toUpperCase() + '</p><h2>' + zone.name + '</h2><p class="zone-lore">' + zone.lore + '</p><div class="zone-quest"><strong>' + (completed ? "✓ Zone objective complete" : zone.quest) + '</strong><span>' + objective.detail + '</span></div>' + activity + (stage < 5 ? '<button class="zone-unlock" data-action="unlock" ' + (completed || !objective.ready ? "disabled" : "") + '>' + (completed ? "✓ " + zone.next + " unlocked" : stage === 1 ? "Restore the beacon → Settlement" : "Open " + zone.next) + '</button>' : "") + '<p class="zone-pet-summary">Companion power: ×' + getCompanionMultiplier(stage).toFixed(2) + ' · Hatch ' + zone.egg + ' in the Pets tab.</p></div></article>';
+    mount.innerHTML = '<article class="zone-scene zone-' + stage + '"><div class="zone-scenery" aria-hidden="true"><span>' + zone.icon + '</span><i></i><i></i><i></i></div><div class="zone-content"><p class="eyebrow">ZONE ' + stage + ' · ' + zone.label.toUpperCase() + '</p><h2>' + zone.name + '</h2><p class="zone-lore">' + zone.lore + '</p><div class="zone-quest"><strong>' + (completed ? "✓ Zone objective complete" : zone.quest) + '</strong><span>' + objective.detail + '</span></div>' + activity + (stage < 5 ? '<button class="zone-unlock" data-action="unlock" ' + (completed || !objective.ready ? "disabled" : "") + '>' + (completed ? "✓ " + zone.next + " unlocked" : stage === 1 ? "Restore the beacon → " + zone.next : "Open " + zone.next) + '</button>' : "") + '<p class="zone-pet-summary">Companion power: ×' + getCompanionMultiplier(stage).toFixed(2) + ' · Hatch ' + zone.egg + ' in the Companions tab.</p></div></article>';
 }
 function renderCompanions() {
     const panel = el("companionPanel");

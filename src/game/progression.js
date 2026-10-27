@@ -3,22 +3,36 @@ const PROGRESSION_DEFAULTS = {
     beaconModules: 0, infrastructure: {}, production: null,
     fieldNodes: [], fieldSerial: 0, fieldLastSpawn: 0, fieldCollected: 0, relayTowers: 0
 };
+// Zone infrastructure.
+//
+// `growth` is the PRICE curve and is deliberately separate from the benefit.
+// It used to be missing, so infrastructureCost fell back to `multiplier` - the
+// building's own benefit - and every line priced itself at exactly the rate it
+// paid out. A line whose cost grows no faster than its reward is infinitely
+// profitable: in simulation every later zone collapsed to one-second purchases
+// about three minutes in and production doubled every few buys.
+//
+// Output lines pay a geometric 1.26 a level and are priced at 1.55; multiplier
+// lines pay 1.15 and are priced at 1.40. Both leave the price growing about
+// 22% a level faster than the reward, so each level is a longer wait than the
+// one before instead of a shorter one, and the last levels of a line still
+// cost real time at endgame production.
 const INFRASTRUCTURE = {
     2: {
-        depotCamp: { name: "Depot Camp", icon: "⛺", cost: 90, max: 25, output: 2, desc: "+2 base Scrap/sec · Lv 2 needed for the gate" },
-        sortingMill: { name: "Sorting Mill", icon: "⚙️", cost: 220, max: 25, multiplier: 1.18, desc: "×1.18 local passive production per building" }
+        depotCamp: { name: "Depot Camp", icon: "⛺", cost: 90, growth: 1.55, max: 25, output: 2, desc: "+2 base Scrap/sec · Lv 2 needed for the gate" },
+        sortingMill: { name: "Sorting Mill", icon: "⚙️", cost: 220, growth: 1.40, max: 25, multiplier: 1.15, desc: "×1.15 local passive production per building" }
     },
     3: {
-        assemblyLine: { name: "Assembly Line", icon: "🏗️", cost: 140, max: 25, output: 2, desc: "+2 base Parts/sec · Lv 2 needed for the gate" },
-        machineShop: { name: "Machine Shop", icon: "🛠️", cost: 320, max: 25, multiplier: 1.18, desc: "×1.18 local passive production per building" }
+        assemblyLine: { name: "Assembly Line", icon: "🏗️", cost: 140, growth: 1.55, max: 25, output: 2, desc: "+2 base Parts/sec · Lv 2 needed for the gate" },
+        machineShop: { name: "Machine Shop", icon: "🛠️", cost: 320, growth: 1.40, max: 25, multiplier: 1.15, desc: "×1.15 local passive production per building" }
     },
     4: {
-        signalExtractor: { name: "Signal Extractor", icon: "📡", cost: 75, max: 25, output: 1, desc: "+1 base Circuits/sec" },
-        capacitorBank: { name: "Capacitor Bank", icon: "🔋", cost: 180, max: 25, multiplier: 1.18, desc: "×1.18 local passive production per building" }
+        signalExtractor: { name: "Signal Extractor", icon: "📡", cost: 75, growth: 1.55, max: 25, output: 1, desc: "+1 base Circuits/sec" },
+        capacitorBank: { name: "Capacitor Bank", icon: "🔋", cost: 180, growth: 1.40, max: 25, multiplier: 1.15, desc: "×1.15 local passive production per building" }
     },
     5: {
-        coreExtractor: { name: "Core Extractor", icon: "💠", cost: 150, max: 25, output: 1, desc: "+1 base Cores/sec" },
-        reactorConduit: { name: "Reactor Conduit", icon: "⚡", cost: 400, max: 25, multiplier: 1.18, desc: "×1.18 local passive production per building" }
+        coreExtractor: { name: "Core Extractor", icon: "💠", cost: 150, growth: 1.55, max: 25, output: 1, desc: "+1 base Cores/sec" },
+        reactorConduit: { name: "Reactor Conduit", icon: "⚡", cost: 400, growth: 1.40, max: 25, multiplier: 1.15, desc: "×1.15 local passive production per building" }
     }
 };
 const ENGINE_RECIPES = [
@@ -33,19 +47,28 @@ function normalizeProgression(saved = {}) {
 }
 function infrastructureLevel(key) { return game.adventure.progression.infrastructure[key] || 0; }
 function infrastructureIncome(stage) {
-    return Object.entries(INFRASTRUCTURE[stage] || {}).reduce((sum, [key, def]) => sum + (def.output || 0) * (Math.pow(1.3, infrastructureLevel(key)) - 1) / .3, 0);
+    return Object.entries(INFRASTRUCTURE[stage] || {}).reduce((sum, [key, def]) => sum + (def.output || 0) * (Math.pow(1.26, infrastructureLevel(key)) - 1) / .26, 0);
 }
 function infrastructureMultiplier(stage) {
     return Object.entries(INFRASTRUCTURE[stage] || {}).reduce((value, [key, def]) => value * Math.pow(def.multiplier || 1, infrastructureLevel(key)), 1);
 }
-function infrastructureCost(def, level) { return Math.ceil(def.cost * Math.pow(def.multiplier || 1.3, level)); }
+// The PRICE curve, never the benefit curve. Falling back to `multiplier` here
+// was the bug: it priced a building at exactly the rate it paid out.
+function infrastructureCost(def, level) { return Math.ceil(def.cost * Math.pow(def.growth ?? 1.45, level)); }
 function buyInfrastructure(stage, key) {
     const def = INFRASTRUCTURE[stage]?.[key];
     if (!def || !isZoneUnlocked(stage) || !gameStarted || window.LastCityCloud?.isSwitching?.()) return;
     const level = infrastructureLevel(key), cost = infrastructureCost(def, level), currency = ZONES[stage].currency;
     if (level >= def.max || game[currency] < cost) return;
+    if (typeof spendAllowance === "function" && !spendAllowance(1)) {
+        if (typeof showNotification === "function") {
+            showNotification("No build allowance left \u00b7 next in " + allowanceNextIn() + "s");
+        }
+        return;
+    }
     game[currency] -= cost;
     game.adventure.progression.infrastructure[key] = level + 1;
+    if (typeof grantXp === "function") grantXp("infrastructure");
     celebrateUpgrade();
     updateGame();
     saveGame(false);
@@ -62,32 +85,57 @@ function searchDuration(level = game.stage2Upgrades.survivorSpeed) { return Math
 function searchReward(site, level = game.stage2Upgrades.survivorSpeed) {
     const base = [8, 12, 10][site] * (1 + infrastructureLevel("searchTools") * .2);
     // Active tools scale rewards; production drives specialize in passive income.
-    return upgradeAmount('survivorSpeed', base, level) * stageResetMultiplier(2) * previousStageMultiplier(2) * getCompanionMultiplier(2) * getGlyphMultiplier(2) * (1 + Math.sqrt(Math.max(0, zoneRate(2) / feedbackResourceMultiplier())) * .08) * feedbackResourceMultiplier();
+    // Same five groups as passive income, so an active reward and a passive
+    // second are scaled by the same things. The settlement bonus (a share of
+    // what the zone already produces) is bounded: unbounded, a mature zone
+    // multiplied every search by twelve.
+    const settlement = Math.min(2, Math.sqrt(Math.max(0, zoneRate(2) / feedbackResourceMultiplier())) * .08);
+    return upgradeAmount('survivorSpeed', base, level) * (1 + settlement)
+        * renewalGroup(2) * synergyGroup(2) * companionGroup(2) * eventGroup(2);
 }
 function engineProfit(level = game.stage3Upgrades.assemblySpeed) {
-    return upgradeAmount('assemblySpeed', 12, level) * stageResetMultiplier(3) * previousStageMultiplier(3) * (1 + infrastructureLevel("precisionTools") * .2) * getCompanionMultiplier(3) * getGlyphMultiplier(3) * feedbackResourceMultiplier();
+    return upgradeAmount('assemblySpeed', 12, level) * (1 + infrastructureLevel("precisionTools") * .2)
+        * renewalGroup(3) * synergyGroup(3) * companionGroup(3) * eventGroup(3);
 }
-function progressionObjective(stage) {
+// One source of truth for what completing a zone requires.
+//
+// Both the in-zone progress line and the locked-zone panel read this, so the
+// requirement a player is shown on a padlocked tab is literally the same list
+// the zone itself checks.
+function zoneRequirements(stage) {
     const a = game.adventure, p = a.progression;
-    if (stage === 1) return {
-        progress: (Math.min(1, game.buildings.citycenter / 4) + p.beaconModules / 3) / 2,
-        detail: "City Centers " + game.buildings.citycenter + "/4 · Beacon modules " + p.beaconModules + "/3",
-        ready: game.buildings.citycenter >= 4 && p.beaconModules >= 3
-    };
-    if (stage === 2) return {
-        progress: (a.keys / 5 + Math.min(1, infrastructureLevel("depotCamp") / 2) + Math.min(1, game.scrap / 500)) / 3,
-        detail: "Keys " + a.keys + "/5 · Depot Camp " + infrastructureLevel("depotCamp") + "/2 · Gate fund " + formatNumber(game.scrap) + "/500 Scrap",
-        ready: a.keys >= 5 && infrastructureLevel("depotCamp") >= 2 && game.scrap >= 500
-    };
-    if (stage === 3) return {
-        progress: (Math.min(1, a.deliveries / 18) + Math.min(1, infrastructureLevel("assemblyLine") / 2) + Math.min(1, game.parts / 800)) / 3,
-        detail: "Engines " + a.deliveries + "/18 · Assembly Line " + infrastructureLevel("assemblyLine") + "/2 · Gate fund " + formatNumber(game.parts) + "/800 Parts",
-        ready: a.deliveries >= 18 && infrastructureLevel("assemblyLine") >= 2 && game.parts >= 800
-    };
+    if (stage === 1) return [
+        { label: "Build 4 City Centers", have: game.buildings.citycenter, need: 4 },
+        { label: "Restore 3 beacon modules", have: p.beaconModules, need: 3 }
+    ];
+    if (stage === 2) return [
+        { label: "Recover 5 depot keys", have: a.keys, need: 5 },
+        { label: "Build Depot Camp to Lv 2", have: infrastructureLevel("depotCamp"), need: 2 },
+        { label: "Fund the gate with 500 Scrap", have: game.scrap, need: 500, format: true }
+    ];
+    if (stage === 3) return [
+        { label: "Deliver 18 engines", have: a.deliveries, need: 18 },
+        { label: "Build Assembly Line to Lv 2", have: infrastructureLevel("assemblyLine"), need: 2 },
+        { label: "Fund the gate with 800 Parts", have: game.parts, need: 800, format: true }
+    ];
+    if (stage === 4) return [
+        { label: "Collect 80 energy pickups", have: p.fieldCollected, need: 80 },
+        { label: "Build 3 Relay Towers", have: p.relayTowers, need: 3 }
+    ];
+    return [{ label: "Defeat the Guardian", have: a.bossDefeated ? 1 : 0, need: 1 }];
+}
+
+function progressionObjective(stage) {
+    const items = zoneRequirements(stage);
+    const parts = items.map(item => {
+        const have = item.format && typeof formatNumber === "function" ? formatNumber(item.have) : item.have;
+        return item.label.replace(/^(Build|Restore|Recover|Deliver|Collect|Fund the gate with)\s+/, "") + " " + have + "/" + item.need;
+    });
+    const progress = items.reduce((sum, item) => sum + Math.min(1, item.have / item.need), 0) / items.length;
     return {
-        progress: (Math.min(1, p.fieldCollected / 80) + p.relayTowers / 3) / 2,
-        detail: "Energy collected " + p.fieldCollected + "/80 · Relay Towers " + p.relayTowers + "/3",
-        ready: p.fieldCollected >= 80 && p.relayTowers >= 3
+        progress,
+        detail: parts.join(" \u00b7 "),
+        ready: items.every(item => item.have >= item.need)
     };
 }
 function handleProgressionAction(stage, action, choice, automatic = false) {
@@ -126,6 +174,7 @@ function handleProgressionAction(stage, action, choice, automatic = false) {
         if (p.relayTowers >= 3 || p.fieldCollected < required || game.circuits < cost) return true;
         game.circuits -= cost;
         p.relayTowers++;
+        if (typeof grantXp === "function") grantXp("milestone");
         celebrateUpgrade();
     } else return false;
     updateGame();
@@ -135,7 +184,8 @@ function handleProgressionAction(stage, action, choice, automatic = false) {
 function fieldInterval(level = game.stage4Upgrades.fieldPower) { return Math.max(800, (1800 - Math.min(4, level) * 200 - Math.max(0, level - 4) * 50) / (1 + infrastructureLevel("pulseFrequency") * .18)); }
 function fieldReward(charged, level = game.stage4Upgrades.fieldPower) {
     // Charged nodes remain worth three blue nodes, including the flat phase.
-    return upgradeAmount('fieldPower', 5, level) * (charged ? 3 : 1) * (1 + infrastructureLevel("fieldCollector") * .25) * stageResetMultiplier(4) * previousStageMultiplier(4) * getCompanionMultiplier(4) * getGlyphMultiplier(4) * feedbackResourceMultiplier();
+    return upgradeAmount('fieldPower', 5, level) * (charged ? 3 : 1) * (1 + infrastructureLevel("fieldCollector") * .25)
+        * renewalGroup(4) * synergyGroup(4) * companionGroup(4) * eventGroup(4);
 }
 function spawnFieldNode() {
     const p = game.adventure.progression;
